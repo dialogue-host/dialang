@@ -1,0 +1,491 @@
+#!/bin/dialang
+
+#{
+  # Dialogue Programming Language Sample
+
+  In this document we write some test syntax to see what would a programming language for dialogue look like.
+}
+
+# single line comment
+
+#{
+  Multi line comment handles markdown notation.
+
+  In dialang colons (;) are exactly equivalent to new lines (\n).
+  We have three kinds of code blocks {} : record types, record values and functions.
+  Function calls can be done in two equivalent ways `myFunc argA argB` or `myFunc(argA, argB)`.
+  This is also true of type with arguments such as `Result e a` (=`Result(e, a)`) as well as for union variants such as `Just a` (=`Just(a)`).
+  These two notations can be set in the language settings as well as `,` in records.
+}
+
+#WIP stop working with github and use dialogue content versioning for package and codebase versioning.
+
+# Import of specific modules from the dialang/core package. All of their content (except for the ghost _values, _Types and _[Data, Types]) gets exposed.
+import dialang/core/List
+import dialang/core/Int as CoreInt
+
+# Import all of the modules from staeter/factorial and wrap them in the Factorial naming.
+import staeter/factorial as Factorial
+
+# List.foldl and CoreInt.multiply come from dialang/core package and Factorial.compute comes from staeter/factorial package
+@expect List.foldl CoreInt.multiply 1 [1, 2, 3] == Factorial.compute 3
+
+#{
+  We use $Maybe when we are unsure to get our value. It has a $map method.
+}
+Maybe a
+  : [ Just a | Nothing ]
+  . { #{
+        Documentation for Maybe.map
+      }
+      map
+        : (a -> b), Maybe a -> Maybe b
+        = { func, Just a -> Just(func a)
+          | _, Nothing -> Nothing
+          }
+    }
+
+
+Result e a
+  : [ Error e, Ok a ]
+  . { map
+        : (a -> b), Result(e, a) -> Result(e, b)
+        = { func, Ok a ->
+            func a |> Ok
+          | _, (Err e) ->
+            Err e
+          }
+
+      andThen
+        : (a -> Result(e, b)), Result(e, a) -> Result(e, b)
+        = { func, Ok(a) ->
+            func(a)
+          | _, Err(e) ->
+            Err(e)
+          }
+
+      mapBoth
+        : (e -> eb), (a -> b), Result(e, a) -> Result(eb, b)
+        = { _, valueUpdater, Ok a ->
+              valueUpdater(a) |> Ok
+          | errorUpdater, _, Err e ->
+              errorUpdater(e) |> Err
+          }
+
+      #{
+        A default toString is provided for every type but it can be overwritten.
+        This is implicitly called in \${myResultValue} to turn it into a String.
+      }
+      toString
+        : Result e a -> String
+        = { Ok a -> a.toString
+          | Err e -> e.toString
+          }
+
+    }
+
+
+# interact with platform through effects. effects can only be instantiated in `<my-capability-name>.capability.d` files so this code should not be here.
+#todo: implement something in unison/koka using abilities/effects to figure out how to properly use them
+IO
+  : _Void
+  . { StdOut : effect
+
+      #{
+        Print to stdout.
+
+        This is an effectful function. It has a mandatory `!` to make its effect explicit when one calls it.
+        It doesn't have an expression as it is implemented in C by the platform layer.
+      }
+      print : String -{StdOut}-> Void
+
+    }
+
+# functions are comparable by hash
+@expect({ a -> String.repeat a "b" } == { String.repeat _ "b" })
+
+# record instantiation
+hw = { h = "hello", w = "world" }
+
+# call method function on a String
+@expect(String.firstToUpper hw.h == "Hello")
+@expect(hw.h.firstToUpper == "Hello")
+
+# run code inline, the result will be shown by the ide or printed in terminal by the cli
+> print!("Hello World!")
+
+#{
+  There are different ways to instantiate values.
+  (Note that functions are values in dialang.)
+}
+helloName = { name -> "Hello ${name}!" }
+explicitlyTyped : String -> String = "Hello ${_}!"
+crammed = { hello = "Hello "; hello ++ _ ++ "!" }
+
+multiline
+  = { hello = "Hello "
+
+      hello ++ _ ++ "!"
+    }
+
+multiLineTyped
+  : String -> String
+  = { name ->
+        _hello = "Hello "
+
+        hello ++ name ++ "!"
+    }
+
+#{
+  extensible records and unions.
+  (function type is implicitly an extensible record)
+}
+doSomething
+  : [ This | That | .. ] -> String
+  = { This -> "this"
+    | That -> "that"
+    | _ -> "other"
+    }
+
+scare : { b : String, .. } = .b
+surprise
+  : { a : String, o : String, .. } -> String
+  = { { a, o } ->
+        a ++ " " ++ o
+    }
+
+me = { a = "ah", b = "bouh", o = "oh" }
+@expect(scare me == "bouh")
+@expect(surprise me == "ah oh")
+
+# declare a private value
+_myPrivate : String = "You can't use me outside of the current scope."
+myPublic = "I didn't put the type here but the compiler will guess it for me."
+
+# declare ghost types
+HideAlias a : _(List a)
+HideContent : _{ cantReadMe : String, fromOutside : Int, theCurrentScope : Float }
+HideUnion : _[ Me, Neither ]
+
+# apply anonymous function
+@expect({ name -> "Hello " ++ name }("Billy") == "Hello Billy")
+
+#{
+  We keep track of previous versions of our House data. This is required for keeping synced apis.
+  We encourage the use of evergreen versioning but other techniques can be used for backward compatibility.
+}
+House
+  : { keys : List Keys, roofColor : Color }
+  . { describe
+        : House -> String
+        = { { keys, roofColor } ->
+              "We have ${List.count keys} to our house and it has a ${Color.describe roofColor} roof."
+          }
+
+    }
+  v { V1
+        : { roofColor : Color, hasGarden : Bool }
+        . { toV2
+              : V1 -> V2
+              = { keys = [] } :+ _
+          }
+
+      V2
+        : { roofColor : Color, hasGarden : Bool, keys : List Keys }
+        . { toV3
+              : V2 -> House
+              = { hasGarden } :+ rest -> rest
+
+            describe
+              : V2 -> String
+              = { { keys, roofColor } ->
+                  "We have ${List.count keys} to our house. It has a "
+                  ++ Color.describe roofColor
+                  ++ " roof"
+                  ++ { where hasGarden -> " and a beautiful garden! 🌞" | -> "." }
+                }
+          }
+    }
+
+#{
+  There are different sorts of `.d` files:
+  - `Readme.d` presents the repo's content.
+  - `Make.cli.d` is a cli that implements how the code gets run in dev/prod mode, versioned, published and pushed in production.
+  - `<my-module-name>.d` is a standard module. They only implement types, interfaces and values but do not execute any code.
+  - `<my-cli-name>.cli.d` is a cli script that can be called with `dialang <my-cli-name> arguments..`.
+  - `<my-program-name>.prog.d` is a long running program that can be built with any platform providing the capabilities it uses.
+  - `<my-rule-name>.rule.d` describes rules that are applied to the codebase, that eventually modify it and throw compile time errors.
+  - `<my-capability-name>.cap.d` contains capabilities and their effects that programs can use and platforms can implement.
+  - `<my-platform-name>.plat.c` or `<my-platform-name>.plat.h` implements the capabilities handled by the platform.
+}
+
+#{
+  Runs a program following the elm architecture.
+
+  When a type contains effectful functions we indicate them between {}.
+}
+Runtime
+  : _Nat
+  . { Setup{..e} flags msg state
+        : { init : flags -{..e}-> state
+            update : msg, state -{..e}-> state
+            onExit : state -{..e}-> Void
+          }
+
+      Feed : _Nat
+      Errno : Nat
+
+      Start flags msg state : effect
+      Exit : effect
+      Async msg : effect
+      Sub msg : effect
+      UnSub : effect
+      Status : effect
+
+      start
+        : Setup{..e} flags msg state -{Start flags msg state, ..e}-> Runtime
+        = platform
+
+      exit
+        : Runtime, Errno -{Exit}-> Void
+        = platform
+
+      #{
+        Runs the given function async then runs update with the resulting msg.
+
+        the `\`(...)` notation delays the evaluation of the argument.
+      }
+      async
+        : `(-{..e}-> msg) -{Async msg, ..e}-> Void
+        = platform
+
+      #{
+        Subscribe to a feed of msg. The update function is called every time a new msg arrives.
+      }
+      subscribe
+        : Decoder msg -{Sub msg}-> Feed
+        = platform
+
+      #{
+        Close a subscription.
+      }
+      unSubscribe
+        : Feed -{UnSub}-> Void
+        = platform
+
+      #{
+        Pull the list of active subscriptions.
+      }
+      subscriptions
+        : -{Status}-> List Feed
+        = platform
+
+      mapAsyncMsg
+        : (msgA -> msgB), `(a -{Async msgA, ..e}-> b) -> `(a -{Async msgB, ..e}-> b)
+        = platform
+
+      #{
+        Returns nothing when the feed is not active
+      }
+      mapSubMsg
+        : Feed, (msgA -> msgB), (a -{Sub msgA, ..e}-> b) -> Maybe (a -{Sub msgB, ..e}-> b)
+        = platform
+
+    }
+
+Time
+  : _{ posix : Int }
+  . { Millis : Int
+
+      now : -{Runtime.Status}-> Time = platform
+      every : Millis -{Runtime.Sub Time}-> Runtime.Feed = platform
+
+    }
+
+Rand
+  : effect
+  . { int : -{Rand}-> Int = platform }
+
+# different types can't be compared
+WeirdString : String
+weirdStr : WeirdString = "hello"
+str : String = "hello"
+# @expect (myStr != str) # compilation error
+
+# though if their structure match they can be casted
+normalWeirdString : String = weirdStr
+weirdNormalString : WeirdString = str
+weirdCopy = weirdStr
+@expect (@type weirdCopy == @type weirdStr)
+@expect (@type str != @type weirdNormalString)
+
+
+Syntax
+  : {todo}
+  . { Parse : effect
+      Edit : effect
+      Eval : effect
+      Publish : effect
+      UpdateSettings : effect
+
+      parse : (Codebase -> data) -{Parse}-> data
+      edit : (Codebase -> Codebase) -{Edit}-> List Error
+      declare : Declaration -{Edit}-> List Error
+
+      Value
+        : extend a
+        . { Ref : {todo}
+            reference : Value -{Parse}-> Ref
+            type : Value -{Parse}-> Type
+            expression : Value -{Parse}-> Expression
+          }
+
+      Type : [todo]
+
+      Error : [todo]
+
+      Code :
+        : { source : Module.Ref
+            range : Range
+          }
+        . { Location : { line : Int, column : Int }
+            Range : { from : Location, to : Location }
+            decontextualize : Code -{Parse}-> String
+          }
+
+      Expression : _Void with {
+
+        Ref : _{todo}
+        Tree : _[todo]
+
+        eval : Expression -> a
+
+      }
+
+      Module : { name : Name.Upper, todo } with {}
+
+      Comment : String with {todo}
+
+      Name
+        : { private : Bool
+            hasSideEffects : Bool
+            name : [ U Upper | L Lower]
+          }
+        . { Upper : _String = {todo}
+            Lower : _String = {todo}
+          }
+
+    }
+
+Codebase
+  : _Void
+  . { #{
+        union of every type found in the codebase
+      }
+      AnyType : @anyType
+
+      #{
+        union of every value found in the codebase
+      }
+      AnyValue : @anyValue
+    }
+
+# apply rule tags and use them in string formatting.
+> print! """
+  We can reference $Maybe or ${@reference Maybe} and have it as an hyperlink in our printed text.
+  We can get its signature ${@signature Maybe} or its complete implementation:
+  ${@implementation Maybe}
+  or its documentation :
+  > ${@documentation Maybe}
+  We can unwrap its type ${@alias Maybe}, get its methods ${@methods Maybe}.
+  We can also get the expression of a value ${@expression Maybe.map} and its type ${@type Maybe.map}.
+  We can escape the \$Maybe or the \${@reference Maybe} to print it as is and `\\` can be escaped as well.
+"""
+#{
+  this will print:
+    """
+    We can reference [Maybe](dialogue-lang.dev/staeter/sample:-maybe) or [Maybe](dialogue-lang.dev/staeter/sample:-maybe) and have it as an hyperlink in our printed text.
+    We can get its signature `Maybe a : [ Just a | Nothing ] with { map }`, its complete implementation:
+    ```
+    #{
+        We use $Maybe when we are unsure to get our value. It has a $map method.
+    }
+    Maybe a
+      : [ Just a | Nothing ]
+      . {
+
+          #{
+            Documentation for Maybe.map
+          }
+          map
+            : (a -> b), Maybe a -> Maybe b
+            = { func, Just a -> Just(func a)
+              | _, Nothing -> Nothing
+              }
+
+        }
+    ```
+    or its documentation :
+    > We use [Maybe](dialogue-lang.dev/staeter/sample:-maybe) when we are unsure to get our value. It has a [Maybe.map](dialogue-lang.dev/staeter/sample:-maybe.map) method.
+    We can unwrap its type `[ Just a | Nothing ]`, get its methods `{ map }`.
+    We can also get the implementation of a value `{ func, Just a -> Just (func a) | _, Nothing -> Nothing }` and its type `(a -> b), Maybe a -> Maybe b`.
+    We can escape the $Maybe or the ${@reference Maybe} to print it as is and `\` can be escaped as well.
+    """
+}
+
+
+Codec : interface {
+
+  encode : a -> Json
+  decode : Json -> Maybe a
+
+  #{
+    We can put functions in our @expect. Its parameters must fulfill the Fuzz interface as it will be tested for 100 random values.
+    Here as it is an interface, the @expect will only be tested for every type `where t implements Codec`.
+
+    WIP: actually we want to distinguish @test and @prove which will both be rule tags.
+  }
+  @expect (val -> val |> encode |> decode == Just val)
+
+}
+sendJson
+  : Url, a -{Http}-> Void
+    where a implements Codec
+  = todo
+
+#{
+  One can extend existing types (here List comes from dialang/core/List) with new methods.
+}
+List
+  : extend List
+  . { getAt
+        : Nat, List(a) -> Maybe a
+        = { 0, head :+ _ ->
+              Just(head)
+
+          | index, _ :+ tail where index > 0 ->
+              getAt(index - 1, tail)
+
+          | _, _ ->
+              Nothing
+
+          }
+    }
+
+# compare and match types
+@expect (@type(List.getAt) == :{ Nat, List(a) -> Maybe a })
+@expect (Type.match :{ a : String, b : Int } :{ a : String, .. })
+
+# Byte, List and Record are the three core types of dialang
+# specifying the byte count is mandatory however list length isn't and record fields are automatically found by the compiler
+Byte<count> : core . { todo }
+List<length> t : core . { todo }
+Record<..fields> : core . { todo }
+
+Matrix<row,col> : List<row> (List<col> Float) with {
+
+  transpose
+    : Matrix<row,col> -> Matrix<col,row>
+    = todo
+
+}

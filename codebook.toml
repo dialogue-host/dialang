@@ -1,6 +1,7 @@
 words = [
+    "binops",
     "dialang",
+    "effectful",
     "parsembler",
     "rst",
-    "effectful",
 ]

@@ -642,24 +642,21 @@ never : Never -> a
 
 // More recent syntax
 
-List<len : Nat> a
+List (len : Nat) a
   = [ #nil where len == 0
-    | #cons a (List<k> a) where len == k + 1
+    | #cons a (List k a) where len == k + 1
     ]
 
-Matrix<row : Nat, col : Nat> a
-  = List<row> (List<col> a)
+Matrix (row : Nat) (col : Nat) a
+  = List row (List col a)
 
   . transpose
-      : Matrix<row, col> a -> Matrix<col, row> a
+      : Matrix row col a -> Matrix col row a
       = @todo
 
-// the values between the `<>` have to be statically evaluated with the rest of the types
-// also `List<_>` and `Matrix<_,_>` can be written as `List` and `Matrix` respectively.
-
-BalancedBinaryTree<depth : Nat> a
+BalancedBinaryTree (depth : Nat) a
   = [ #leaf a where depth == 0
-    | #branch (BalancedBinaryTree<k> a) a (BalancedBinaryTree<k> a) where depth == k + 1
+    | #branch (BalancedBinaryTree k a) a (BalancedBinaryTree k a) where depth == k + 1
     ]
 
 // for a given depth, BalancedBinaryTree has to have a single possible shape.
@@ -672,48 +669,101 @@ Range a
       = { ra, rb -> ra.min <= rb.min && ra.max >= rb.max }
 
 
-Bounded<range : Range a> a
-  = a where (val : a) <= range.max && (val : a) >= range.min
+Bounded (min : a) (max : a) a
+  = a where min <= val <= max forall val
 
   . extendBound
-      : <new>, Bounded<range> a -> Bounded<new> a
-        where new.isWiderThan range
+      : nMin, nMax, Bounded min max a -> Bounded nMin nMax a
+        where nMin <= min && nMax >= max
       = { val -> val }
 
-  . shrinkBound
-      : <new>, Bounded<range> a -> [ Bounded<new> a | #outOfBound ]
-      = { val where val <= new.max && val >= new.min -> val
-        | _ -> #outOfBound
-        }
+Eq (eq : a) a
+  = a where val == eq forall val
 
-
-GreaterThan<min : a> a
-  = a where (val : a) >= min
+GreaterThan (min : a) a
+  = a where val >= min forall val
 
   . sum
-      : GreaterThan<minA> a, GreaterThan<minB> a -> GreaterThan<minA + minB> a
-      = { valA, valB -> valA + valB }
+      : GreaterThan minA a, GreaterThan minB a -> GreaterThan (minA + minB) a
+      = a.sum
 
-StrictlyGreaterThan<min : a> a
-  = a where (val : a) > min
+StrictlyGreaterThan (min : a) a
+  = a where val > min forall val
 
-LesserThan<max : a> a
-  = a where (val : a) <= max
+LesserThan (max : a) a
+  = a where val <= max forall val
 
-StrictlyLesserThan<max : a> a
-  = a where (val : a) < max
+StrictlyLesserThan (max : a) a
+  = a where val < max forall val
 
-Order = [ LesserThan | Equal | GreaterThan ]
+Order = [ #lesserThan | #equal | #greaterThan ]
 
-Comparable a
-  = a where (a.compare : a, a -> Order)
+Comparable type
+  = type where
+      ( type.compare : type, type -> Order where
+          { a, b, c ->
+              order = type.compare a b
+              in order == type.compare b c ==> order == type.compare a c
+          }
+      )
 
   . bound
-      : <range>, a -> [ Bounded<range> a | #outOfBound ]
-      = { val where val <= range.max && val >= range.min -> val
+      : min, max, type -> [ Bounded min max type | #outOfBound ]
+      = { val where min <= val <= max -> val
         | _ -> #outOfBound
         }
 
-Percent = Bounded<{min = 0, max = 1}> Float
-Even = Int where i % 2 == 0
+
+// The `assume` keyword can be used on statements that can't be automatically proven. It will be thoroughly fuzz tested.
+Int = core
+
+  . compare
+      : Int, Int -> Order where assume
+          ( order = Int.compare a b
+            in order == Int.compare b c ==> order == Int.compare a c
+          )
+          forall a, b, c
+      = @todo
+
+
+Percent = Bounded 0 1 Float
 Odd = Int where i % 2 == 1
+MultipleOf (mult : num) num = num where n % mult == 0
+Even = MultipleOf 2 Int
+Nat = GreaterThan 0 Int
+
+Sign
+  = [ #type
+    | #bits Nat
+    | #string
+    | #char
+    | #int
+    | #float
+    | #var Var.Ref
+    | #alias Alias.Ref (List Sign)
+    | #tag Tag.Ref (List Sign)
+    | #union (OSet Sign)
+    | #struct (List (Field.Ref, Sign))
+    | #tuple (List Sign)
+    | #function (List Static) (List Sign) Sign
+    | #where Sign (Expr #bool)
+    ]
+
+Value (type : Type)
+  = case type
+      { #string -> String
+      | #int -> Int
+      | #float -> Float
+      | #record fieldSet ->
+          OSet.foldl
+            { field acc -> { %field.name : Value field.type } & acc }
+            {}
+            fieldSet
+      | #union tagSet ->
+          OSet.foldl
+            { (tag : Type) acc -> tag & acc
+            | tag acc -> [ %tag.name (Tuple.fromSet tag.args |> Tuple.map ) ] & acc
+            }
+            []
+            tagSet
+      }

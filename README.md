@@ -1,6 +1,19 @@
-# Dialang
+# ⛵️ Dialang
 
-Dialang is a fast, friendly, reliable, safe, maintainable, multilingual, purely functional programming language that runs anywhere, treats functions as values and has first class meta-programming. It aims to fulfill [Dialogue's programming language requirements][1].
+Dialang is a delightful language for reliable, extensible and secure programs.
+
+- **No runtime error** : Type inference ensure you don't miss any corner case.
+- **No broken state** : Constrain your datatypes to ensure they can't hold onto invalid data.
+- **Fearless refactoring** : Fast and friendly compiler messages guide you through your changes.
+- **First class versioning** : Ensure your program stays backward compatible throughout the development process.
+- **Extension hot swapping** : Define interfaces and safely swap extensions at runtime.
+- **Controllable effects** : Have full control and visibility over the side effects produced by your programs, packages and extensions.
+- **Automated parallelization** : Effortlessly parallelize your single threaded code at compile time thanks to Interaction Calculus.
+- **Portable** : Run your programs on every platform handling the proper side effects.
+- **Minimal and expressive** : Master the language quickly thanks to its minimal set of concepts and simple architecture.
+- **Multilingual** : Edit and translate your codebase and packages in different spoken languages while guaranteeing syntactic consistency.
+
+Dialang is built in order to fulfill [Dialogue's programming language requirements][1].
 
 ## Design Principles
 

@@ -642,128 +642,117 @@ never : Never -> a
 
 // More recent syntax
 
-List (len : Nat) a
+List(len : Nat, a)
   = [ #nil where len == 0
-    | #cons a (List k a) where len == k + 1
+    | #cons(a, List k a) where len == k + 1
     ]
 
-Matrix (row : Nat) (col : Nat) a
-  = List row (List col a)
+Matrix(row : Nat, col : Nat, a)
+  = List(row, List(col, a))
 
   . transpose
-      : Matrix row col a -> Matrix col row a
+      : Matrix(col, row, a)
       = @todo
 
-BalancedBinaryTree (depth : Nat) a
-  = [ #leaf a where depth == 0
-    | #branch (BalancedBinaryTree k a) a (BalancedBinaryTree k a) where depth == k + 1
+BalancedBinaryTree(depth : Nat, a)
+  = [ #leaf(a) where depth == 0
+    | #branch(BalancedBinaryTree(k, a), a, BalancedBinaryTree(k, a)) where depth == k + 1
     ]
 
 // for a given depth, BalancedBinaryTree has to have a single possible shape.
 
-Range a
+Range(a)
   = { min : a, max : a } where min <= max
 
   . isWiderThan
-      : Range a, Range a -> Bool
-      = { ra, rb -> ra.min <= rb.min && ra.max >= rb.max }
+      : Range(a) -> Bool
+      = { r -> self.min <= r.min && self.max >= r.max }
 
 
-Bounded (min : a) (max : a) a
-  = a where min <= val <= max forall val
+Bounded(min : a, max : a, a)
+  = a where min <= val <= max
 
   . extendBound
       : nMin, nMax, Bounded min max a -> Bounded nMin nMax a
         where nMin <= min && nMax >= max
       = { val -> val }
 
-Eq (eq : a) a
-  = a where val == eq forall val
+Eq(eq : t, t)
+  = t where @forall{val : t -> val == eq}
 
-GreaterThan (min : a) a
-  = a where val >= min forall val
+GreaterThan(min : t, t)
+  = t where (val : t) >= min
 
   . sum
-      : GreaterThan minA a, GreaterThan minB a -> GreaterThan (minA + minB) a
-      = a.sum
+      : GreaterThan(minB, t) -> GreaterThan(min + minB, t)
+      = { b -> t.sum(self, b) }
 
-StrictlyGreaterThan (min : a) a
-  = a where val > min forall val
+StrictlyGreaterThan(min : a, a)
+  = a where val > min
 
-LesserThan (max : a) a
-  = a where val <= max forall val
+LesserThan(max : a, a)
+  = a where val <= max
 
-StrictlyLesserThan (max : a) a
-  = a where val < max forall val
+StrictlyLesserThan(max : a, a)
+  = a where val < max
 
 Order = [ #lesserThan | #equal | #greaterThan ]
 
-Comparable type
-  = type where
-      ( type.compare : type, type -> Order where
-          { a, b, c ->
-              order = type.compare a b
-              in order == type.compare b c ==> order == type.compare a c
+compare : t, t -> Order
+  = case(
+      t,
+      { #type -> { a, b -> a == b}
+      | #bits(count) -> ...
+      }
+    )
+
+Comparable(t)
+  = t where
+      ( t.compare : t -> Order where
+          forall{ (a : t), b, c ->
+            let order = a.compare(b) in
+            order == b.compare(c) ==> order == a.compare(c)
           }
       )
 
   . bound
-      : min, max, type -> [ Bounded min max type | #outOfBound ]
-      = { val where min <= val <= max -> val
+      : min, max -> [ Bounded(min, max, t) | #outOfBound ]
+      = { where min <= self <= max -> self
         | _ -> #outOfBound
         }
 
 
-// The `assume` keyword can be used on statements that can't be automatically proven. It will be thoroughly fuzz tested.
+// The `@assume` rule can be used on statements that can't be automatically proven. It will be thoroughly fuzz tested.
 Int = core
 
   . compare
-      : Int, Int -> Order where assume
-          ( order = Int.compare a b
-            in order == Int.compare b c ==> order == Int.compare a c
-          )
-          forall a, b, c
+      : Int, Int -> Order where
+          forall{ (a : Int), b, c ->
+            let order = a.compare(b) in
+            order == b.compare(c) ==> order == a.compare(c)
+          }
       = @todo
 
 
-Percent = Bounded 0 1 Float
+Percent = Bounded(0, 1, Float)
 Odd = Int where i % 2 == 1
-MultipleOf (mult : num) num = num where n % mult == 0
-Even = MultipleOf 2 Int
-Nat = GreaterThan 0 Int
+MultipleOf(mult : num, num) = num where n % mult == 0
+Even = MultipleOf(2, Int)
+Nat = GreaterThan(0, Int)
+Maybe(t) = [ t | #nothing ]
+Nullable(t) = [ t | #null ]
 
-Sign
+/* type */
+Type
   = [ #type
-    | #bits Nat
-    | #string
-    | #char
-    | #int
-    | #float
-    | #var Var.Ref
-    | #alias Alias.Ref (List Sign)
-    | #tag Tag.Ref (List Sign)
-    | #union (OSet Sign)
-    | #struct (List (Field.Ref, Sign))
-    | #tuple (List Sign)
-    | #function (List Static) (List Sign) Sign
-    | #where Sign (Expr #bool)
+    | #bits(Nat)
+    | #var(Var.Ref, Maybe(Type))
+    | #alias(Alias.Ref, Type)
+    | #record(List(Field.Ref, Type))
+    | #tag(Tag.Ref, Type)
+    | #union(OSet(Type))
+    | #tuple(List(Type))
+    | #function(args : Type, effects : Type, return : Type)
+    | #where(Type, Expr(Bool))
+    | #static(Expr(#any))
     ]
-
-Value (type : Type)
-  = case type
-      { #string -> String
-      | #int -> Int
-      | #float -> Float
-      | #record fieldSet ->
-          OSet.foldl
-            { field acc -> { %field.name : Value field.type } & acc }
-            {}
-            fieldSet
-      | #union tagSet ->
-          OSet.foldl
-            { (tag : Type) acc -> tag & acc
-            | tag acc -> [ %tag.name (Tuple.fromSet tag.args |> Tuple.map ) ] & acc
-            }
-            []
-            tagSet
-      }

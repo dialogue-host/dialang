@@ -1,6 +1,6 @@
 # ⛵️ Dialang
 
-Dialang is a delightful language for reliable, extensible and secure programs.
+Dialang is a delightful language for reliable, secure and extensible programs.
 
 - **No runtime error** : Type inference ensure you don't miss any corner case.
 - **No broken state** : Constrain your datatypes to ensure they can't hold onto invalid data.

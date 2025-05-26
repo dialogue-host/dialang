@@ -661,40 +661,35 @@ BalancedBinaryTree(depth : Nat, a)
 
 // for a given depth, BalancedBinaryTree has to have a single possible shape.
 
-Range(a)
-  = { min : a, max : a } where min <= max
+Range(t)
+  = { min : t, max : t } where min <= max
 
   . isWiderThan
-      : Range(a) -> Bool
+      : Range(t) -> Bool
       = { r -> self.min <= r.min && self.max >= r.max }
 
 
-Bounded(min : a, max : a, a)
-  = a where min <= val <= max
-
-  . extendBound
-      : nMin, nMax, Bounded min max a -> Bounded nMin nMax a
-        where nMin <= min && nMax >= max
-      = { val -> val }
+Bounded(min : t, max : t, t)
+  = t where min <= self <= max
 
 Eq(eq : t, t)
-  = t where @forall{val : t -> val == eq}
+  = t where self == eq
 
 GreaterThan(min : t, t)
-  = t where (val : t) >= min
+  = t where self >= min
 
   . sum
       : GreaterThan(minB, t) -> GreaterThan(min + minB, t)
       = { b -> t.sum(self, b) }
 
 StrictlyGreaterThan(min : a, a)
-  = a where val > min
+  = a where self > min
 
 LesserThan(max : a, a)
-  = a where val <= max
+  = a where self <= max
 
 StrictlyLesserThan(max : a, a)
-  = a where val < max
+  = a where self < max
 
 Order = [ #lesserThan | #equal | #greaterThan ]
 
@@ -709,29 +704,26 @@ compare : t, t -> Order
 Comparable(t)
   = t where
       ( t.compare : t -> Order where
-          forall{ (a : t), b, c ->
+          @forall({ (a : t), b, c ->
             let order = a.compare(b) in
             order == b.compare(c) ==> order == a.compare(c)
-          }
+          })
       )
 
-  . bound
-      : min, max -> [ Bounded(min, max, t) | #outOfBound ]
-      = { where min <= self <= max -> self
-        | _ -> #outOfBound
-        }
-
-
-// The `@assume` rule can be used on statements that can't be automatically proven. It will be thoroughly fuzz tested.
-Int = core
-
+Int
+  = core
   . compare
-      : Int, Int -> Order where
-          forall{ (a : Int), b, c ->
+      : Int -> Order where
+          @forall({ (a : Int), b, c ->
             let order = a.compare(b) in
             order == b.compare(c) ==> order == a.compare(c)
-          }
+          })
       = @todo
+  . div
+      : Int -> [ Int | ?divideByZero ]
+      = { 0 -> ?divideByZero
+        | b -> self / b
+        }
 
 
 Percent = Bounded(0, 1, Float)
@@ -756,3 +748,7 @@ Type
     | #where(Type, Expr(Bool))
     | #static(Expr(#any))
     ]
+
+
+sum : Int, Int -> Int ? IntOverflow
+(|?) : t ? e, (e -> t) -> t

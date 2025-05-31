@@ -12,10 +12,8 @@ port module Ts exposing
 import Dict
 import Fs
 import Fs.Path
-import Fs.Tree
 import Json.Decode as D
 import Json.Encode as E
-import RemoteData
 import Result.Extra
 import TsJson.Codec as TsC
 import TsJson.Decode as TsD
@@ -40,7 +38,7 @@ type ToElm v
     | ReadResult Fs.Path (Result String String)
     | RemoteReadResult Url (Result String String)
     | WriteResult Fs.Path (Result String String)
-    | ReadDirsResult (Result String (Fs.Tree v))
+    | ReadDirsResult (Result String (List (Fs.Path, Fs.Entry v)))
     | SyncResult (List (ToElm v))
 
 
@@ -97,7 +95,7 @@ toElmCodec =
                 |> TsC.namedVariant2 "ReadResult" ReadResult ( "path", pathCodec ) ( "content", TsC.result TsC.string TsC.string )
                 |> TsC.namedVariant2 "RemoteReadResult" RemoteReadResult ( "url", urlCodec ) ( "content", TsC.result TsC.string TsC.string )
                 |> TsC.namedVariant2 "WriteResult" WriteResult ( "path", pathCodec ) ( "result", TsC.result TsC.string TsC.string )
-                |> TsC.namedVariant1 "ReadDirsResult" ReadDirsResult ( "result", TsC.result TsC.string fsTreeCodec )
+                |> TsC.namedVariant1 "ReadDirsResult" ReadDirsResult ( "result", TsC.result TsC.string fsCodec )
                 |> TsC.namedVariant1 "SyncResult" SyncResult ( "results", TsC.list self )
                 |> TsC.buildCustom
         )
@@ -196,31 +194,24 @@ codecFromToString { toString, fromString } =
         )
 
 
-fsTreeCodec : TsC.Codec (Fs.Tree v)
-fsTreeCodec =
+fsCodec : TsC.Codec (List (Fs.Path, Fs.Entry v))
+fsCodec =
     let
-        entryCodec : TsC.Codec (Fs.Tree.Entry v)
+        entryCodec : TsC.Codec (Fs.Entry v)
         entryCodec =
             TsC.stringUnion
-                [ ( "File", Fs.Tree.File RemoteData.NotAsked )
-                , ( "Directory", Fs.Tree.Directory )
+                [ ( "File", Fs.File Fs.NotAsked )
+                , ( "Directory", Fs.Directory Dict.empty )
                 ]
     in
     TsC.object (\path entry -> { path = path, entry = entry })
         |> TsC.field "path" .path pathCodec
         |> TsC.field "entry" .entry entryCodec
         |> TsC.buildObject
-        |> TsC.list
         |> TsC.map
-            (List.foldl
-                (\{ path, entry } tree ->
-                    Fs.Tree.insert path entry tree
-                )
-                Dict.empty
-            )
-            (Fs.Tree.toList
-                >> List.map (\( path, entry ) -> { path = path, entry = entry })
-            )
+            (\{ path, entry } -> (path, entry))
+            (\(path, entry) -> { path = path, entry = entry })
+        |> TsC.list
 
 
 

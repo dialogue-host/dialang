@@ -115,8 +115,9 @@ IO
 
     }
 
-// functions are comparable by hash
-@expect({ a -> String.repeat a "b" } == { String.repeat _ "b" })
+// functions are comparable
+// '$' can be use to insert an argument somewhere in the middle of the arg list
+@expect({ a -> String.repeat a "b" } == (String.repeat $ "b"))
 
 // record instantiation
 hw = { h = "hello", w = "world" }
@@ -701,14 +702,17 @@ compare : t, t -> Order
       }
     )
 
-Comparable(t)
-  = t where
+isComparable
+  : Type -> Bool
+  = { t where
       ( t.compare : t -> Order where
           @forall({ (a : t), b, c ->
             let order = a.compare(b) in
             order == b.compare(c) ==> order == a.compare(c)
           })
-      )
+      ) -> #true
+    | _ -> #false
+    }
 
 Int
   = core

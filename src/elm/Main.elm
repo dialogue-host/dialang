@@ -4,15 +4,21 @@ import Json.Decode as D
 import Platform
 import Result.Extra
 import Ts
+import Fs
+import Fs.Tree
+import Fs.Path
+import Fs.Tree
+import Tuple.Extra
 
 
 type alias Model =
-    {}
-
+    { fs : Fs.Tree String
+    , watch : List Fs.Path
+    }
 
 type Msg
-    = FromTs (Ts.ToElm ())
-    | DecodeError D.Error
+    = FromTs (Ts.ToElm String)
+    | TsDecodeError D.Error
 
 
 main : Platform.Program D.Value Model Msg
@@ -29,18 +35,51 @@ main =
         , update = update
         , subscriptions =
             \_ ->
-                Ts.subscribe |> Sub.map (Result.map FromTs >> Result.Extra.extract DecodeError)
+                Ts.subscribe |> Sub.map (Result.map FromTs >> Result.Extra.extract TsDecodeError)
         }
 
 
 init : Ts.Flags -> ( Model, Cmd Msg )
-init _ =
-    ( {}, Ts.Print "Hello World!" |> Ts.send )
+init { fsContext } =
+    ( { fs = Fs.Tree.empty fsContext, watch = [] }
+    , Cmd.none
+    )
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
-update _ _ =
-    ( {}, Cmd.none )
+update msg model =
+    case msg of
+        TsDecodeError err ->
+            D.errorToString err |> exit
+
+        FromTs (Ts.ReadDirsResult (Ok changes)) ->
+            { model
+            | fs =
+                Fs.Tree.union
+                    { keepSecondFileDataWhenFistIsNotAsked = True }
+                    (Fs.Tree.fromList (Tuple.first model.fs) changes)
+                    model.fs
+            }
+            |> Tuple.Extra.pairWith Cmd.none
+
+        FromTs (Ts.ReadDirsResult (Err err)) ->
+            exit err
+
+        FromTs (Ts.WatchEvent path Ts.Remove) ->
+            { model | fs = Fs.Tree.remove path model.fs }
+            |> Tuple.Extra.pairWith Cmd.none
+
+        -- FromTs (Ts.WatchEvent path Ts.Modify) ->
+        --     case Fs.Tree.get path model.fs of
+        --         Just ()
+        --     { model | fs = Fs.Tree.remove path model.fs }
+        --     |> Tuple.Extra.pairWith Cmd.none
+
+        _ -> (model, Cmd.none)
+        -- FromTs ReadResult Fs.Path (Result String String) ->
+        -- FromTs RemoteReadResult Url (Result String String) ->
+        -- FromTs WriteResult Fs.Path (Result String String) ->
+        -- FromTs SyncResult (List (FromTs v)) ->
 
 
 
@@ -49,4 +88,7 @@ update _ _ =
 
 exit : String -> ( Model, Cmd Msg )
 exit msg =
-    ( {}, Ts.send (Ts.Exit msg) )
+    let dummyContext = { home = Fs.Path.root, current = Fs.Path.root } in
+    ( { fs = Fs.Tree.empty dummyContext, watch = [] }
+    , Ts.send (Ts.Exit msg)
+    )

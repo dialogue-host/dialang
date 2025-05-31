@@ -3,17 +3,21 @@
 Dialang is a delightful language for reliable, secure and extensible programs.
 
 - **No runtime error** : Type inference ensure you don't miss any corner case.
-- **No broken state** : Constrain your datatypes to ensure they can't hold onto invalid data.
+- **No broken state** : Constrain your datatypes to ensure they can't hold onto invalid or impossible data.
 - **Fearless refactoring** : Fast and friendly compiler messages guide you through your changes.
 - **First class versioning** : Ensure your program stays backward compatible throughout the development process.
-- **Extension hot swapping** : Define interfaces and safely swap extensions at runtime.
-- **Controllable effects** : Have full control and visibility over the side effects produced by your programs, packages and extensions.
-- **Automated parallelization** : Effortlessly parallelize your single threaded code at compile time thanks to Interaction Calculus.
+- **Extension hot swapping** : Define interfaces and safely swap pieces of code at runtime.
+- **Controllable effects** : Have full visibility and control over the side effects produced by your programs, packages and extensions.
+- **Automated multithreading** : Write single threaded code that gets parallelized at compile time thanks to its Interaction Calculus target.
 - **Portable** : Run your programs on every platform handling the proper side effects.
-- **Minimal and expressive** : Master the language quickly thanks to its minimal set of concepts and simple architecture.
-- **Multilingual** : Edit and translate your codebase and packages in different spoken languages while guaranteeing syntactic consistency.
+- **Minimal and Expressive** : Master the language quickly thanks to its minimal set of concepts, simple architecture and code organization.
+- **Multilingual** : Edit and translate your codebase and packages in different spoken languages while guaranteeing syntactic validity and consistency.
 
 Dialang is built in order to fulfill [Dialogue's programming language requirements][1].
+
+---
+
+# Legacy Text
 
 ## Design Principles
 

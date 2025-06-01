@@ -62,7 +62,7 @@ type FromElm
 
 
 type alias Flags =
-    { pwd : Fs.Path
+    { fsContext : Fs.Context
     }
 
 
@@ -158,8 +158,16 @@ fromElmCodec =
 
 flagsCodec : TsC.Codec Flags
 flagsCodec =
-    TsC.object (\pwd -> { pwd = pwd })
-        |> TsC.field "pwd" .pwd pathCodec
+    TsC.object (\fsContext -> { fsContext = fsContext })
+        |> TsC.field "fsContext" .fsContext contextCodec
+        |> TsC.buildObject
+
+
+contextCodec : TsC.Codec Fs.Context
+contextCodec =
+    TsC.object (\current {-home-} -> { current = current{-, home = home-} })
+        |> TsC.field "current" .current pathCodec
+        -- |> TsC.field "home" .home pathCodec
         |> TsC.buildObject
 
 

@@ -81,14 +81,14 @@ toRelative context path_ =
     case path of
         Path ( ".", _ ) -> path
 
-        Path ( "~", [] ) ->
-            sever context.current context.home
-            |> Maybe.withDefault context.home
+        -- Path ( "~", [] ) ->
+        --     sever context.current context.home
+        --     |> Maybe.withDefault context.home
 
-        Path ( "~", h :: q ) ->
-            let abs = join context.home (Path (h, q)) in
-            sever context.current abs
-            |> Maybe.withDefault abs
+        -- Path ( "~", h :: q ) ->
+        --     let abs = join context.home (Path (h, q)) in
+        --     sever context.current abs
+        --     |> Maybe.withDefault abs
 
         Path ( "", _ ) ->
             sever context.current path
@@ -107,10 +107,10 @@ toAbsolute context path =
                 Path ( ".", h :: q ) ->
                     join context.current (Path (h, q))
 
-                Path ( "~", [] ) -> context.home
+                -- Path ( "~", [] ) -> context.home
 
-                Path ( "~", h :: q ) ->
-                    join context.home (Path (h, q))
+                -- Path ( "~", h :: q ) ->
+                --     join context.home (Path (h, q))
 
                 Path ( "", _ ) -> path
 

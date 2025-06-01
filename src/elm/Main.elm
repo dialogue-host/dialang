@@ -88,7 +88,7 @@ update msg model =
 
 exit : String -> ( Model, Cmd Msg )
 exit msg =
-    let dummyContext = { home = Fs.Path.root, current = Fs.Path.root } in
+    let dummyContext = { {-home = Fs.Path.root,-} current = Fs.Path.root } in
     ( { fs = Fs.Tree.empty dummyContext, watch = [] }
     , Ts.send (Ts.Exit msg)
     )

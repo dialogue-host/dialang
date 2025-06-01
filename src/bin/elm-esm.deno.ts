@@ -5,13 +5,17 @@ try {
     const content = await Deno.readTextFile(path)
     const out = compiledElmToESModule(content)
     if (out === null) {
-        await stdout("Error : Improper compiled elm code\n")
+        await stdout("Error in elm-esm.deno.ts : Improper compiled elm code.\n")
         Deno.exit(1)
     } else {
         await stdout(out)
     }
 } catch (e) {
-    await stdout("Error : " + e.message + "\n")
+    if (e instanceof Error) {
+        await stdout("Error in elm-esm.deno.ts : " + e.message + "\n")
+    } else {
+        await stdout("Error in elm-esm.deno.ts : Error isn't an instance of Error class." + "\n")
+    }
     Deno.exit(2)
 }
 

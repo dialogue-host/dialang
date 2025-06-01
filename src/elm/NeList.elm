@@ -2,7 +2,6 @@ module NeList exposing (..)
 
 import List.Extra
 import Maybe.Extra
-import Util
 
 
 type alias NeList a =

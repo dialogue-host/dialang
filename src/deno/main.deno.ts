@@ -15,7 +15,7 @@ type EditKind =
 //// GLOBALS
 const elm: Interop.ElmApp = await tryCatch(
     Elm.Main.init,
-    { flags: { pwd: Deno.cwd() }},
+    { flags: { fsContext: { current: Deno.cwd() }}},
     "Error initiating elm program"
 )
 let watcher: undefined | Deno.FsWatcher = undefined

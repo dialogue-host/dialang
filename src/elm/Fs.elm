@@ -26,5 +26,5 @@ type alias InternalTree v =
 
 type alias Context =
     { current : Path
-    , home : Path
+    -- , home : Path
     }

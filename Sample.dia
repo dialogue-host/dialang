@@ -704,14 +704,12 @@ compare : t, t -> Order
 
 isComparable
   : Type -> Bool
-  = { t where
-      ( t.compare : t -> Order where
+  = { t ->
+        t.compare := t -> Order where
           @forall({ (a : t), b, c ->
             let order = a.compare(b) in
             order == b.compare(c) ==> order == a.compare(c)
           })
-      ) -> #true
-    | _ -> #false
     }
 
 Int

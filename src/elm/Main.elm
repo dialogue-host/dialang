@@ -69,11 +69,14 @@ update msg model =
             { model | fs = Fs.Tree.remove path model.fs }
             |> Tuple.Extra.pairWith Cmd.none
 
-        -- FromTs (Ts.WatchEvent path Ts.Modify) ->
-        --     case Fs.Tree.get path model.fs of
-        --         Just ()
-        --     { model | fs = Fs.Tree.remove path model.fs }
-        --     |> Tuple.Extra.pairWith Cmd.none
+        FromTs (Ts.WatchEvent path Ts.Modify) ->
+            if List.member path model.watch
+            then
+                { model | fs = Fs.Tree.setFileToLoading path model.fs }
+                |> Tuple.Extra.pairWith (Ts.Read path |> Ts.send)
+            else
+                { model | fs = Fs.Tree.insert path (Fs.File Fs.NotAsked) model.fs }
+                |> Tuple.Extra.pairWith Cmd.none
 
         _ -> (model, Cmd.none)
         -- FromTs ReadResult Fs.Path (Result String String) ->

@@ -639,26 +639,61 @@ never : Never -> a
 */
 
 
-
-
 // More recent syntax
 
-List(len : Nat, a)
-  = [ #nil where len == 0
-    | #cons(a, List k a) where len == k + 1
-    ]
+List(t)
+  = [ #leaf | #cons(t, List(t)) ]
+
+  . length : Nat
+      = ( loop
+            : List(t), Nat -> Nat
+            = { #leaf, acc -> acc
+              | #const(_, subList), acc ->
+                  loop(subList, acc + 1)
+              }
+
+          loop(self, 0)
+        )
+
+  .member : t -> Bool
+      = case self
+          { h :: _, v where h == v -> #true
+          | _ :: q, v -> q.member v
+          | [], _ -> #false
+          }
+
+  .hasNoDuplicates : Bool
+      = ( loop
+            : List(t), List(t) -> Bool
+            = { seen, h :: q ->
+                  if(
+                    seen.member(h),
+                    #false,
+                    loop(h :: seen, q)
+                  )
+              | _, [] -> #true
+              }
+
+          loop([], self)
+        )
+
+UList(t)
+  = List(t) where self.hasNoDuplicates
+
+Vec(len : Nat, t)
+  = List(t) where self.length == len
 
 Matrix(row : Nat, col : Nat, a)
-  = List(row, List(col, a))
+  = Vec(row, Vec(col, a))
 
   . transpose
       : Matrix(col, row, a)
       = @todo
 
 BalancedBinaryTree(depth : Nat, a)
-  = [ #leaf(a) where depth == 0
-    | #branch(BalancedBinaryTree(k, a), a, BalancedBinaryTree(k, a)) where depth == k + 1
-    ]
+  = { where depth == 0 -> #leaf(a)
+    | where depth == k + 1 -> #branch(BalancedBinaryTree(k, a), a, BalancedBinaryTree(k, a))
+    }
 
 // for a given depth, BalancedBinaryTree has to have a single possible shape.
 
@@ -683,14 +718,14 @@ GreaterThan(min : t, t)
       : GreaterThan(minB, t) -> GreaterThan(min + minB, t)
       = { b -> t.sum(self, b) }
 
-StrictlyGreaterThan(min : a, a)
-  = a where self > min
+StrictlyGreaterThan(min : t, t)
+  = t where self > min
 
-LesserThan(max : a, a)
-  = a where self <= max
+LesserThan(max : t, t)
+  = t where self <= max
 
-StrictlyLesserThan(max : a, a)
-  = a where self < max
+StrictlyLesserThan(max : t, t)
+  = t where self < max
 
 Order = [ #lesserThan | #equal | #greaterThan ]
 
@@ -705,9 +740,9 @@ compare : t, t -> Order
 isComparable
   : Type -> Bool
   = { t ->
-        t.compare := t -> Order where
+        t has .compare : t -> Order where
           @forall({ (a : t), b, c ->
-            let order = a.compare(b) in
+            order = a.compare(b)
             order == b.compare(c) ==> order == a.compare(c)
           })
     }
@@ -717,7 +752,7 @@ Int
   . compare
       : Int -> Order where
           @forall({ (a : Int), b, c ->
-            let order = a.compare(b) in
+            order = a.compare(b)
             order == b.compare(c) ==> order == a.compare(c)
           })
       = @todo
@@ -729,8 +764,8 @@ Int
 
 
 Percent = Bounded(0, 1, Float)
-Odd = Int where i % 2 == 1
-MultipleOf(mult : num, num) = num where n % mult == 0
+Odd = Int where self % 2 == 1
+MultipleOf(mult : num, num) = num where self % mult == 0
 Even = MultipleOf(2, Int)
 Nat = GreaterThan(0, Int)
 Maybe(t) = [ t | #nothing ]
@@ -739,18 +774,118 @@ Nullable(t) = [ t | #null ]
 /* type */
 Type
   = [ #type
-    | #bits(Nat)
-    | #var(Var.Ref, Maybe(Type))
-    | #alias(Alias.Ref, Type)
-    | #record(List(Field.Ref, Type))
+    | #bits([ 8 | 16 | 32 | 64 | 128 ])
+    | #var(Type.Var.Ref, Maybe(Type))
+    | #custom(Type.Custom.Ref)
+    | #record({ fields : List((Field.Ref, Type)), extensible : Maybe(Type.Var.Ref) })
     | #tag(Tag.Ref, Type)
-    | #union(OSet(Type))
+    | #union(UList(Type))
     | #tuple(List(Type))
     | #function(args : Type, effects : Type, return : Type)
     | #where(Type, Expr(Bool))
     | #static(Expr(#any))
     ]
 
+Field.Ref
+  = Name.Lower.Ref
+
 
 sum : Int, Int -> Int ? IntOverflow
 (|?) : t ? e, (e -> t) -> t
+
+
+cast
+  : (t : Type), v -> [ t | ?impossibleCast ]
+  =
+
+
+/*
+### Language representations
+
+As in most languages:
+`()` are used for operation priority and may be used for scoping tuples and function arguments,
+`{}` are used for function definition as well as record signature and declaration,
+`[]` are used for declaring lists as well as scoping union type signatures.
+
+Somewhat peculiarly:
+`,` is an infix operator grouping both sides into a tuple or splitting elements of a list,
+`|` is an infix operator grouping types from both sides into an union or to separate the different branches of a function,
+`->` is an infix operator describing a function that sends the left type to the right one, it also separates the pattern match made on function's parameters form its implementation,
+`?` is an infix operator splitting a type signature into its error tags (on the right) and other variants (on the left),
+`:` serves to declare the type of a symbol in a definition or in a pattern but in an expression it is a boolean operator returning `#true` if the left side exists and matches the given type,
+`=` is only used to declare a symbol's implementation,
+`where` is an infix operator that takes a type signature or a matched pattern and a boolean and statically ensures that the boolean is always true.
+
+The boolean operators are the following infix:
+`==`, `!=`, `<=`, `>=`, `<`, `>`, `&&`, `||`, `==>`, `<==>`, `has` and the unary `!`.
+
+There are also the mathematical infix operators:
+`+`, `-`, `*`, `/`, `^` and the unary `-`.
+
+The construct infixes are:
+`++` to append two `String`s or `List`s,
+`&` to union two records, tuples, `Set`s or `Dict`s.
+
+There are three pipe infix operators:
+`|>`, `<|`, `|?` where the third one does `t ? e, (e -> t) -> t`.
+
+There are two kinds of tags:
+`#normalTag` and `?errorTag` which both can have attached arguments.
+Error tags also contains data about the way it has been thrown `{ ?myErr -> myErr.msg }`.
+
+Using `_` as first character of a tag, record field, type name or value name makes it is private.
+
+`Char`s are utf-8 graphemes with their modifiers, not necessarily 8-bit as in C.
+
+Some syntax sugar:
+a record instantiation may not use `=` at all if there is a value in scope that has the same name as the record field,
+`=|>` can be used in a record instantiation if there is a value in scope that has the same name as the record field to give a `filedType -> fieldType` function on its right side,
+`$` can be used as a placeholder turning `func $ arg2` into `{arg1 -> func arg1 arg2}`,
+`as` can be used in patterns and on module imports in the same way as in Elm.
+
+*/
+
+
+/*
+### Moving values between type signature and implementation
+
+These are all equivalent:
+```
+// Typed implementation
+Matrix
+  = { (row : Nat), (col : Nat), (a : Type) -> Vec(row, Vec(col, a)) }
+```
+<==>
+```
+// Thanks to type inference
+Matrix
+  = { row, col, a -> Vec(row, Vec(col, a)) }
+```
+<==>
+```
+// With type signature
+Matrix
+  : Nat, Nat, Type -> Type
+  = { row, col, a -> Vec(row, Vec(col, a)) }
+```
+<==>
+```
+// In signature value declaration
+Matrix
+  : (row : Nat), (col : Nat), (a : Type) -> Type
+  = { _, _, _ -> Vec(row, Vec(col, a)) }
+```
+<==>
+```
+// Type declaration syntactic sugar
+Matrix(row : Nat, col : Nat, a)
+  = Vec(row, Vec(col, a))
+```
+
+Arguments of a function can be used in its type signature:
+```
+cast : (t : Type), v1 -> [ t | ?impossibleCast ]
+printf : (str : String), PrintfArgs(str) -{ #stdout(String) }-> Void
+```
+but those have to be evaluated statically otherwise the compiler won't be able to type check.
+*/

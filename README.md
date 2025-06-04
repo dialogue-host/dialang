@@ -2,8 +2,8 @@
 
 Dialang is a delightful language for reliable, secure and extensible programs.
 
-- **No runtime error** : Type inference ensure you don't miss any corner case.
-- **No broken state** : Constrain your datatypes to ensure they can't hold onto invalid or impossible data.
+- **No runtime error** : Type check you code statically and ensure you don't miss any corner case.
+- **No broken state** : Constrain your datatypes to guarantee they can't hold onto invalid or impossible data.
 - **Fearless refactoring** : Fast and friendly compiler messages guide you through your changes.
 - **First class versioning** : Ensure your program stays backward compatible throughout the development process.
 - **Extension hot swapping** : Define interfaces and safely swap pieces of code at runtime.

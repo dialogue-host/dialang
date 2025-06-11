@@ -1,17 +1,18 @@
 # ⛵️ Dialang
 
-Dialang is a delightful language for reliable, secure and extensible programs.
+Dialang is a delightful language to build maleable, reliable and secure software that runs anywhere.
 
-- **No runtime error** : Type check you code statically and ensure you don't miss any corner case.
-- **No broken state** : Constrain your datatypes to guarantee they can't hold onto invalid or impossible data.
-- **Fearless refactoring** : Fast and friendly compiler messages guide you through your changes.
+- **No runtime error** : Type check your code statically and ensure you don't miss any edge case. (Statically type safe)
+- **No broken state** : Constrain your datatypes to guarantee that they can't hold invalid or impossible data. (Refinment types)
+- **Fearless refactoring** : Fast and friendly compiler messages guides you through your changes. (Elm quality error messaging)
+- **Minimal and Expressive** : Master the language quickly thanks to its minimal set of concepts, simple architecture and code organization.
 - **First class versioning** : Ensure your program stays backward compatible throughout the development process.
 - **Extension hot swapping** : Define interfaces and safely swap pieces of code at runtime.
 - **Controllable effects** : Have full visibility and control over the side effects produced by your programs, packages and extensions.
-- **Automated multithreading** : Write single threaded code that gets parallelized at compile time thanks to its Interaction Calculus target.
-- **Portable** : Run your programs on every platform handling the proper side effects.
-- **Minimal and Expressive** : Master the language quickly thanks to its minimal set of concepts, simple architecture and code organization.
-- **Multilingual** : Edit and translate your codebase and packages in different spoken languages while guaranteeing syntactic validity and consistency.
+- **Automated multithreading** : Write single threaded code that gets parallelized at compile time. (Interaction calculus target)
+- **First class metaprogramming** : Enforce good practices with custom static checkers and context specific codegen.
+- **Portable** : Run your programs on every platform handling the proper side effects. (Roc's platform abstraction)
+- **Code internationalisation** : Edit and translate your codebase and packages in different spoken languages while guaranteeing syntactic validity and consistency.
 
 Dialang is built in order to fulfill [Dialogue's programming language requirements][1].
 
@@ -22,6 +23,8 @@ Dialang is built in order to fulfill [Dialogue's programming language requiremen
 ## Design Principles
 
 Some general design principles guiding Dialang.
+
+"make it easy to do the right things and annoying if not impossible to do the wrong things"
 
 ### Minimal Concept and Programming Techniques Count
 
@@ -105,11 +108,9 @@ Languages that make use of the indentation in their grammar usually cause issues
 
 ## Legacy
 
-
 As dialang aims to be simple and maintainable we want to ensure data locality.
 
 Pointers removes the locality of data and can lead to complex and hard-to-debug issues.
-
 
 Functional languages reduce complexity by making our code behave less like distributed systems.
 

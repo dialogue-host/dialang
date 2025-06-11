@@ -4,6 +4,7 @@ import Dict
 import Fs exposing (..)
 import Fs.Path as Path
 import Fs.FileData as FileData
+import NeList
 
 
 empty : InternalTree v
@@ -12,8 +13,14 @@ empty =
 
 
 singleton : Path -> Entry v -> InternalTree v
-singleton path entry =
-    insert path entry Dict.empty
+singleton (Path (head, queue)) entry =
+    ( case NeList.fromList queue of
+        Nothing -> entry
+        Just subPath ->
+            singleton (Path subPath) entry
+            |> Directory
+    )
+    |> Dict.singleton head
 
 
 get : Path -> InternalTree v -> Maybe (Entry v)
@@ -33,10 +40,7 @@ get (Path path) tree =
 
 insert : Path -> Entry v -> InternalTree v -> InternalTree v
 insert path entry tree =
-    union
-        { keepSecondFileDataWhenFistIsNotAsked = False }
-        (singleton path entry)
-        tree
+    update path (always (Just entry)) tree
 
 
 remove : Path -> InternalTree v -> InternalTree v

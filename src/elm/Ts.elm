@@ -38,7 +38,7 @@ type ToElm v
     | ReadResult Fs.Path (Result String String)
     | RemoteReadResult Url (Result String String)
     | WriteResult Fs.Path (Result String String)
-    | ReadDirsResult (Result String (List (Fs.Path, Fs.Entry v)))
+    | ReadDirsResult (Result String (List {isFile : Bool, path : Fs.Path}))
     | SyncResult (List (ToElm v))
 
 
@@ -202,23 +202,20 @@ codecFromToString { toString, fromString } =
         )
 
 
-fsCodec : TsC.Codec (List (Fs.Path, Fs.Entry v))
+fsCodec : TsC.Codec (List { path : Fs.Path, isFile : Bool })
 fsCodec =
     let
-        entryCodec : TsC.Codec (Fs.Entry v)
-        entryCodec =
+        isFileCodec : TsC.Codec Bool
+        isFileCodec =
             TsC.stringUnion
-                [ ( "File", Fs.File Fs.NotAsked )
-                , ( "Directory", Fs.Directory Dict.empty )
+                [ ( "File", True )
+                , ( "Directory", False )
                 ]
     in
-    TsC.object (\path entry -> { path = path, entry = entry })
+    TsC.object (\path isFile -> { path = path, isFile = isFile })
         |> TsC.field "path" .path pathCodec
-        |> TsC.field "entry" .entry entryCodec
+        |> TsC.field "entry" .isFile isFileCodec
         |> TsC.buildObject
-        |> TsC.map
-            (\{ path, entry } -> (path, entry))
-            (\(path, entry) -> { path = path, entry = entry })
         |> TsC.list
 
 

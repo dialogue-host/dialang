@@ -641,10 +641,9 @@ never : Never -> a
 
 // More recent syntax
 
-List(t)
-  = [ #leaf | #cons(t, List(t)) ]
+List := t -> [ #leaf | #cons(t, List(t)) ]
 
-  . length : Nat
+  .length : Nat
       = ( loop
             : List(t), Nat -> Nat
             = { #leaf, acc -> acc
@@ -656,20 +655,19 @@ List(t)
         )
 
   .member : t -> Bool
-      = case self
-          { h :: _, v where h == v -> #true
-          | _ :: q, v -> q.member v
-          | [], _ -> #false
-          }
+      = { [ h, .. ], v where h == v -> #true
+        | [ _, ..q ], v -> q.member(v)
+        | [], _ -> #false
+        } self
 
   .hasNoDuplicates : Bool
       = ( loop
             : List(t), List(t) -> Bool
-            = { seen, h :: q ->
-                  if(
+            = { seen, [ h, ..q ] ->
+                  ifThenElse(
                     seen.member(h),
                     #false,
-                    loop(h :: seen, q)
+                    loop([ h, ..seen ], q)
                   )
               | _, [] -> #true
               }
@@ -677,13 +675,11 @@ List(t)
           loop([], self)
         )
 
-UList(t)
-  = List(t) where self.hasNoDuplicates
+UList := t -> l:List(t) where l.hasNoDuplicates
 
-Vec(len : Nat, t)
-  = List(t) where self.length == len
+Vec := len:Nat, t -> l:List(t) where l.length == len
 
-Matrix(row : Nat, col : Nat, a)
+Matrix(row:Nat, col:Nat, a)
   = Vec(row, Vec(col, a))
 
   . transpose
@@ -697,79 +693,65 @@ BalancedBinaryTree(depth : Nat, a)
 
 // for a given depth, BalancedBinaryTree has to have a single possible shape.
 
-Range(t)
-  = { min : t, max : t } where min <= max
+Range
+  := t -> { min:t, max:t } where min <= max
 
-  . isWiderThan
+  .isWiderThan
       : Range(t) -> Bool
       = { r -> self.min <= r.min && self.max >= r.max }
 
 
-Bounded(min : t, max : t, t)
-  = t where min <= self <= max
+Bounded
+  := min:t, max:t, t -> v:t where min <= v <= max
 
-Eq(eq : t, t)
-  = t where self == eq
+Eq
+  := eq:t, t -> v:t where v == eq
 
-GreaterThan(min : t, t)
-  = t where self >= min
+GreaterThan
+  := min:t, t -> v:t where v >= min
 
   . sum
       : GreaterThan(minB, t) -> GreaterThan(min + minB, t)
       = { b -> t.sum(self, b) }
 
-StrictlyGreaterThan(min : t, t)
-  = t where self > min
-
-LesserThan(max : t, t)
-  = t where self <= max
-
-StrictlyLesserThan(max : t, t)
-  = t where self < max
-
-Order = [ #lesserThan | #equal | #greaterThan ]
+Order := [ #lesserThan | #equal | #greaterThan ]
 
 compare : t, t -> Order
-  = case(
-      t,
-      { #type -> { a, b -> a == b}
-      | #bits(count) -> ...
-      }
-    )
+  = { a, b where t == Int -> @todo
+    | _, _ -> @todo
+    }
 
 isComparable
   : Type -> Bool
   = { t ->
         t has .compare : t -> Order where
-          @forall({ (a : t), b, c ->
+          @forall({ a:t, b, c ->
             order = a.compare(b)
             order == b.compare(c) ==> order == a.compare(c)
           })
     }
 
-Int
-  = core
+Int := Type // := Type is reserved to core types
   . compare
       : Int -> Order where
-          @forall({ (a : Int), b, c ->
+          @forall({ a:Int, b, c ->
             order = a.compare(b)
             order == b.compare(c) ==> order == a.compare(c)
           })
       = @todo
   . div
-      : Int -> [ Int | ?divideByZero ]
-      = { 0 -> ?divideByZero
-        | b -> self / b
-        }
+      : i:Int -> Int where i != 0
+      = @todo
 
 
-Percent = Bounded(0, 1, Float)
-Odd = Int where self % 2 == 1
-MultipleOf(mult : num, num) = num where self % mult == 0
-Even = MultipleOf(2, Int)
-Nat = GreaterThan(0, Int)
-Maybe(t) = [ t | #nothing ]
-Nullable(t) = [ t | #null ]
+Percent := Bounded(0, 1, Float)
+Odd := i:Int where i % 2 == 1
+MultipleOf := mult:num, num -> val:num where val % mult == 0
+Even := MultipleOf(2, Int)
+Nat := GreaterThan(0, Int)
+PNat := i:Int where i > 0
+Maybe(t) := [ t | #nothing ]
+Nullable(t) := [ t | #null ]
 
 /* type */
 Type
@@ -795,8 +777,8 @@ sum : Int, Int -> Int ? IntOverflow
 
 
 cast
-  : (t : Type), v -> [ t | ?impossibleCast ]
-  =
+  : t:Type, v -> [ t | ?impossibleCast ]
+  = @todo
 
 
 /*
@@ -824,7 +806,9 @@ There are also the mathematical infix operators:
 
 The construct infixes are:
 `++` to append two `String`s or `List`s,
-`&` to union two records, tuples, `Set`s or `Dict`s.
+`&` to union two records, tuples, `Set`s or `Dict`s,
+`..` notation can be used to mach a list `[ h, .., e ]`, `[ h, ..q, e ]` where `h` is the first element, `e` the last and - in the second case - `q` is a list containing every other element,
+`..` notation can be used to mach a record `{ fieldA, fieldB, ..r }` where `r` is a record containing all other fields,
 
 There are three pipe infix operators:
 `|>`, `<|`, `|?` where the third one does `t ? e, (e -> t) -> t`.
@@ -851,41 +835,20 @@ a record instantiation may not use `=` at all if there is a value in scope that 
 
 These are all equivalent:
 ```
-// Typed implementation
-Matrix
-  = { (row : Nat), (col : Nat), (a : Type) -> Vec(row, Vec(col, a)) }
+// Type declaration
+Matrix := row:PNat, col:PNat, a:Type -> Vec(row, Vec(col, a))
 ```
 <==>
 ```
 // Thanks to type inference
-Matrix
-  = { row, col, a -> Vec(row, Vec(col, a)) }
+Matrix := row, col, a -> Vec(row, Vec(col, a))
 ```
-<==>
-```
-// With type signature
-Matrix
-  : Nat, Nat, Type -> Type
-  = { row, col, a -> Vec(row, Vec(col, a)) }
-```
-<==>
-```
-// In signature value declaration
-Matrix
-  : (row : Nat), (col : Nat), (a : Type) -> Type
-  = { _, _, _ -> Vec(row, Vec(col, a)) }
-```
-<==>
-```
-// Type declaration syntactic sugar
-Matrix(row : Nat, col : Nat, a)
-  = Vec(row, Vec(col, a))
-```
+
 
 Arguments of a function can be used in its type signature:
 ```
-cast : (t : Type), v1 -> [ t | ?impossibleCast ]
-printf : (str : String), PrintfArgs(str) -{ #stdout(String) }-> Void
+cast : target:Type, _ -> [ target | ?impossibleCast ]
+printf : str:String, PrintfArgs(str) -#stdout(String)-> Void
 ```
 but those have to be evaluated statically otherwise the compiler won't be able to type check.
 */

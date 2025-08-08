@@ -1,20 +1,45 @@
 # ⛵️ Dialang
 
-Dialang is a delightful language to build maleable, reliable and secure software that runs anywhere.
+Dialang is a opinionated language for the masses to write malleable and reliable software.
 
 - **No runtime error** : Type check your code statically and ensure you don't miss any edge case. (Statically type safe)
-- **No broken state** : Constrain your datatypes to guarantee that they can't hold invalid or impossible data. (Refinment types)
-- **Fearless refactoring** : Fast and friendly compiler messages guides you through your changes. (Elm quality error messaging)
-- **Minimal and Expressive** : Master the language quickly thanks to its minimal set of concepts, simple architecture and code organization.
-- **First class versioning** : Ensure your program stays backward compatible throughout the development process.
-- **Extension hot swapping** : Define interfaces and safely swap pieces of code at runtime.
-- **Controllable effects** : Have full visibility and control over the side effects produced by your programs, packages and extensions.
+- **No broken state** : Constrain your datatypes to guarantee that they can't hold invalid or impossible data. (Refinement types)
+- **The language is the framework** : The language makes every codebase follow the best practices making code browsable, testable and consistent. (locality of behavior, single source of truth, The Elm Architecture, ...)
+- **Fearless refactoring** : Fast and friendly compiler messages guides you through your changes. (Elm quality error messaging and compiler optimization)
+- **Run with holes** : Run incomplete programs and incrementally build your software by filling the blanks. (Hazel holes)
+- **Controllable effects** : Have full visibility and control over the side effects produced by your programs and packages. (Unison's algebraic effects)
 - **Automated multithreading** : Write single threaded code that gets parallelized at compile time. (Interaction calculus target)
+- **Code hot loading** : Safely swap pieces of code at runtime and maintain version compatibility. (Lamdera's evergreen and Elixir)
 - **First class metaprogramming** : Enforce good practices with custom static checkers and context specific codegen.
-- **Portable** : Run your programs on every platform handling the proper side effects. (Roc's platform abstraction)
-- **Code internationalisation** : Edit and translate your codebase and packages in different spoken languages while guaranteeing syntactic validity and consistency.
+- **Platform's abstraction** : Run your programs on every platform that can handle the proper side effects. (Roc's platform abstraction)
+- **Code internationalization** : Edit and translate your codebase and packages in different spoken languages while guaranteeing syntactic validity and consistency. (Unison's structural naming + code and documentation translation tables)
+- **The State is the Database** : Stores the state in a manner that complies with database standards. (Lamdera)
 
 Dialang is built in order to fulfill [Dialogue's programming language requirements][1].
+
+## Todo
+
+- [ ] Grammar EBNF
+- [ ] Tree walk interpreter
+  - [ ] Lexer
+  - [ ] Parser
+  - [ ] Basic Types Checker
+  - [ ] Tree Walk Interpreter
+  - [ ] Refinement Types Checker (SMT integration)
+  - [ ] Nice Error Messaging
+- [ ] Self Hosted Compiler
+  - [ ] Multilingual Lexer and Parser Interface
+  - [ ] Structural Naming and Translation Tables
+  - [ ] Basic Types Checker
+  - [ ] Refinement Types Checker (SMT integration)
+  - [ ] Multilingual Pretty Printer
+  - [ ] Nice Multilingual Error Messaging
+  - [ ] Static AST Access
+  - [ ] Versioning and Collaboration
+  - [ ] Interaction Calculus Code Gen
+  - [ ] Repl
+- [ ] Interaction Calculus Target
+  - [ ] Secure Extension Hot Swapping
 
 ---
 
@@ -36,7 +61,9 @@ We want to encourage users to write code that is self descriptive, easy to under
 
 A concrete example of this principle is the restricted set of binary operators: Some operators - such as `+`, `*`, `==`, `>=`, `|>`, etc. - are essential and make code much cleaner than using their corresponding function calls. Those that have clear behavior are handled by default, but we do not let programmers implement their own binops as they could implement things like `|.` or `|*` for which the expected behavior is much less obvious.
 
-### Minimize Potential for Errors
+### Minimize Footguns
+
+### Minimize Implicits
 
 ### Single Source of Truth
 
@@ -74,7 +101,7 @@ Buffer Overflows, Null Pointer Dereferencing, Dangling Pointers, Memory Leaks. A
 
 ### Meta Programming
 
-Static access to ast and run code at static time (ex: ast visitor/modifier, inline rule calls and codegen).
+Static access to AST and run code at static time (ex: AST visitor/modifier, inline rule calls and codegen).
 
 ### Self Hosted Compiler and Modular Lexer/Parser
 

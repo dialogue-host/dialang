@@ -1,0 +1,270 @@
+# Dialang Tutorial
+
+This document details every aspect of the language. It serves as a detailed description of its features and is structured like a tutorial.
+
+
+## Comments
+
+Comments in dialang use the `/* ... */` for multiline comments and `// ...` for single line ones.
+Whenever it makes sense we try to keep syntax from widely used languages (here C and JavaScript).
+Modules start within a cooment block to melt documentation and code together.
+Comments mostly follow the standard markdown syntax and `*/` can be typed inside of code blocks (between backticks) without closing the multiline comment.
+Code can be run code inline with `@` functions for the IDE to render its output :
+```
+@print "Hello World!"
+```
+This feature is inspired by [Jupyter Notebooks](https://jupyter.org/).
+
+
+## Install Packages
+
+If we where to give the http address of the file in the import statement it would create strange behaviors in case the file it points to gets modified without the user's awareness.
+To fix this issue and keep the flexibility in terms of import targets we manage packages in the following manner :
+```bash
+# Install the package from "~/.dialang/packages/ex" under the name `Example`.
+# The version can be specified with `--v` (defaults to latest) and different ways of loading packages can be implemented (here path and github).
+dialang install Example path="~/.dialang/packages/example" --v=2.3.0
+dialang install Example2 github="dialogue-host/example-package"
+
+# Print list of packages, their version and the modules they bring with them.
+dialang packages
+
+# Pull a new version of a package
+dialang upgrade Example --v=3.0.0
+
+# Remove a package
+dialang remove Example2
+```
+Package versions follow the [Semantic Versioning](https://semver.org/) numbering system.
+
+
+## Imports
+
+Every module has to start with its imports to make its dependencies immediately obvious.
+*/
+
+// Imports may of may not use an alias.
+import Int
+import Dialang.Type as D.Type
+
+// Import modules from `Example` package
+import Example.HelloModule as Ex.Hello
+
+// Files can be statically loaded.
+import "../config.json" as config : String
+
+/*
+Import circle are handled to give the maximal flexibility for code organization and naming.
+
+
+## Modules
+
+Module files have upper case names and end with the `.dia` extension.
+Modules are records containing the types and values declared in it.
+
+
+## Value Declaration
+
+Values can be declared with `=` and the type can be specified by adding the `: MyType` before the equal :
+*/
+
+hello = "Hello World!"
+life : I16 = 42
+sum = { a, b -> a + b }
+
+/*
+The declaration has to be written between the `=` and the following newline. Brackets (`{`, `[`, `(` or `"`) can be used for multiline declarations.
+Same for the type specification which has the same constraints.
+
+
+## Type Declaration
+
+A set of core types are provided that can be used and combined to create any other type in the language. Those types are bytes, strings, records, tuples, tags, unions and functions.
+As for value declaration, type declaration has to be written between the `:=` and the following newline.
+*/
+
+I16 := Bytes(16)
+User := ( firstName:String, lastName:String, age:Nat )
+Coords := ( I16, I16 )
+
+Bool := { #true | #false }
+
+// Function type taking a variable type `a` and returning a `String`.
+ToString(a) := String
+Number := { Int | Float }
+List(a) := { () | (a, ..List(a)) }
+Either(l, r) := { #left(l) | #right(r) }
+Weight := { #pound(Float) | #kg(Float) }
+
+
+/*
+The boolean expression given after the `where` keyword has to be true otherwise a compile error gets thrown. This is called [refinement typing](https://ucsd-progsys.github.io/liquidhaskell-tutorial/Tutorial_01_Introduction.html).
+*/
+
+Nat := i:I16 where i >= 0
+NEList(a) := l:List(a) where Struct.length(l) > 0
+Range(n) := ( min:n, max:n ) where min <= max
+
+// some usage examples
+toNEList
+  : List(a) -> { NEList(a) | ?empty }
+  = { () -> ?empty
+    | list -> list
+    }
+
+toRange
+  : Int, Int -> Range
+  = { a, b where a <= b -> ( min = a, max = b )
+    | a, b -> ( min = b, max = a )
+    }
+
+average
+  : NEList(Float) -> Float
+  = { l -> List.foldl((+), 0, l) / List.length(l) }
+
+/*
+Static values can be given as parameters to a type but these types won't be automatically inferred.
+*/
+
+Vec(len:Nat, a) := l:List(a) where List.length(l) == len
+pos : Vec(3, Int) = (1, 2, 3)
+
+/*
+
+
+## Private Terms
+
+Values, types and tags can be instantiated with a name that starts with an `_`. Their scope will be limited to the module they have been declared in.
+This syntax comes from Python.
+*/
+
+_myPrivateString = "Hello little goblin!"
+_MyPrivateType := { #youDontSeeMe | #meNeither }
+
+// Private tags can be used to wrap some data and avoid it being used incorrectly.
+Id := #_id(I16)
+
+/*
+
+## Core Types
+
+Core types are one of the most essential building blocks of the language and have to be extrealy easy to transform and manipulate which is why so much syntactic sugar is added for them.
+
+
+### Bits and Numbers
+
+// todo
+
+
+### Structs
+
+Structs combine multiple types/values into a single one. They are a combination of the concept of tuples and records found in some other languages.
+Their fields can be named, unnamed or optional.
+
+Struct fields can be accessed via the `.` notation and removed using `\` inserted with the `..` notation :
+*/
+
+MyStructType :=
+  ( String
+  , String
+  , foo : String
+  , bar : String
+  , ~optional : String = "Default string"
+  )
+
+// optional fields will take their default value if not filled when the value gets casted into the type
+myStruct : MyStructType
+  = ( "hello", "world", foo = "foo", bar = "bar", ~ )
+// the `~` makes it explicit that optional fields are inserted
+
+// named fields have to be declared after unnamed fields but in any order
+myStruct1 : MyStructType
+  = ( "hello", "world", optional = "Default string", bar = "bar", foo = "foo" )
+// == myStruct
+
+// field access
+foo = myStruct.foo
+hello = myStruct.0
+world = myStruct.1
+
+// add fields
+myNewStruct = ( "my", ..myStruct, "John", pow = "pow" )
+// == ( "my", "hello", "world", "John", foo = "foo", bar = "bar", pow = "pow", optional = "Default string" )
+
+// remove named field
+myNewStruct1 = myStruct\foo
+// == ( "hello", "world", bar = "bar", optional = "Default string" )
+
+// remove unnamed fields
+myNewStruct2 = myNewStruct\2\0\optional
+// == ( "hello", "John", foo = "foo", bar = "bar", pow = "pow" )
+
+// `\_` can be used to only replace the needed fields and avoid repetitions
+myNewStruct4
+  = ( ..myStruct\_
+    , foo = "My new fancy foo string!"
+    , optional = "Dark mode"
+    )
+
+// update fields
+myNewStruct3 = ( ..myStruct\_\1\optional, "Henry", foo = "My new fancy foo string!" )
+// == ("hello", "Henry", foo = "My new fancy foo string!", bar = "bar" )
+
+// also works for struct types except for field access
+MyStructType1 : ( ..MyStructType, pow:String )
+MyStructType2 : MyStructType\foo
+
+/*
+
+
+### Unions
+### Tags
+### Lists and Strings
+
+
+## Naming Convention
+
+Conventions are enforced by the compiler whenever possible.
+We write names in camel case with an eventual `_rec` or `_sub` appended at the end for recursive and sub functions for instance.
+Values, type parameters, tags and record fields start with a lower case letter while types, modules, functions and record fields returning types start with an upper case letter.
+Some different distinction might be found in languages that do not have upper and lower case letters such as arabic.
+
+
+## Static Evaluation
+
+Everything that can be statically evaluated is statically evaluated and has the type corresponding to its actual value :
+*/
+
+list = ( 'a', 'b', 'c' )
+containsB : #true = List.member('b', list)
+third : 'c' = List.getAt(3, list)
+
+
+/*
+
+## Casting
+
+Upcasting can be done tacitely. For instance `containsB` is of type `#true` but can be given as an argument to a function that asks for a `Bool := { #true | #false }` type.
+However downcasting has to be done explicitly through *pattern matching* so that no edge case can be missed.
+
+
+## Case Switch and Pattern Matching
+
+*/
+
+sign
+  : Number -> { #positive | #negative | #zero }
+  = { 0 -> #zero
+    | i where i > 0 -> #positive
+    | _ -> #negative
+    }
+
+sayHello
+  : User -> String
+  = { (firstName as f, lastName as l) where f == "John" && l == "Dow" ->
+        "Hey ${f}! Happy to see you!"
+    | (lastName) ->
+        "Hello M. ${lastName}, Welcome to our services."
+    }
+
+/*

@@ -23,7 +23,7 @@ These two notations can be set in the language settings as well as `,` in record
 
 */
 
-// WIP stop working with github and use dialogue content versioning for package and codebase versioning.
+// WIP stop working with GitHub and use dialogue content versioning for package and codebase versioning.
 
 // Import of specific modules from the dialang/core package. All of their content (except for the ghost _values, _Types and _[Data, Types]) gets exposed.
 package dialang/core as Core
@@ -60,8 +60,9 @@ Maybe a
           }
     }
 
+
 Result e a
-  : [ #error e, #ok a ]
+  : [ #error e | #ok a ]
   . { map
         : (a -> b), Result(e, a) -> Result(e, b)
         = { func, #ok a ->
@@ -126,7 +127,7 @@ hw = { h = "hello", w = "world" }
 @expect(String.firstToUpper hw.h == "Hello")
 @expect(hw.h.firstToUpper == "Hello")
 
-// run code inline, the result will be shown by the ide or printed in terminal by the cli
+// run code inline, the result will be shown by the IDE or printed in terminal by the cli
 > print!("Hello World!")
 
 /*
@@ -162,9 +163,9 @@ doSomething
     | _ -> "other"
     }
 
-scare : { b : String, .. { = .b
+scare : { b : String, .. } -> String = .b
 surprise
-  : { a : String, o : String, .. { -> String
+  : { a : String, o : String, .. } -> String
   = { { a, o } ->
         a ++ " " ++ o
     }
@@ -178,49 +179,38 @@ _myPrivate : String = "You can't use me outside of the current scope."
 myPublic = "I didn't put the type here but the compiler will guess it for me."
 
 // declare ghost types
-HideAlias a : _(List a)
-HideContent : _{ cantReadMe : String, fromOutside : Int, theCurrentScope : Float }
-HideUnion : _[ Me, Neither ]
+HideAlias a := _(List a)
+HideContent := _{ cantReadMe : String, fromOutside : Int, theCurrentScope : Float }
+HideUnion := _[ Me, Neither ]
 
 // apply anonymous function
 @expect({ name -> "Hello " ++ name }("Billy") == "Hello Billy")
+@expect(case("Billy", { name -> "Hello " ++ name }) == "Hello Billy")
+@expect(("Billy" |> "Hello " ++ $) == "Hello Billy")
 
 /*
   We keep track of previous versions of our House data. This is required for keeping synced apis.
   We encourage the use of evergreen versioning but other techniques can be used for backward compatibility.
 */
 House
-  : { keys : List Keys, roofColor : Color }
-  . { describe
-        : House -> String
-        = { { keys, roofColor } ->
-              "We have \{List.count keys} to our house and it has a \{Color.describe roofColor} roof."
-          }
+  := { keys : List Keys, roofColor : Color }
 
-    }
-  v ( V1
-        : { roofColor : Color, hasGarden : Bool }
-        . { toV2
-              : V1 -> V2
-              = { keys = [] } :+ _
-          }
+  .describe
+    : String
+    = "We have \{List.count self.keys} to our house and it has a \{Color.describe self.roofColor} roof."
 
-      V2
-        : { roofColor : Color, hasGarden : Bool, keys : List Keys }
-        . { toV3
-              : V2 -> House
-              = { hasGarden } :+ rest -> rest
-
-            describe
-              : V2 -> String
-              = { { keys, roofColor } ->
-                  "We have \{List.count keys} to our house. It has a "
-                  ++ Color.describe roofColor
-                  ++ " roof"
-                  ++ { where hasGarden -> " and a beautiful garden! 🌞" | -> "." }
-                }
-          }
-    }
+  /*
+    The `House.V1` is the type of the first version of `House` and `House.V_` is a union of every version of the `House` type.
+    Here `House.V2 == { roofColor : Color, hasGarden : Bool, keys : List(Keys) }` and we currently are at `V3`.
+  */
+  .fromPreviousVersions
+    : House.V_ -> House
+    = { { hasGarden, ..rest }:House.V2 ->
+          rest
+      | olderVersions ->
+          House.V2.fromPreviousVersions olderVersions
+          |> self.fromPreviousVersions
+      }
 
 /*
   There are different sorts of `.d` files:
@@ -304,22 +294,20 @@ Runtime
       */
       mapSubMsg
         : Feed, (msgA -> msgB), (a -{Sub msgA, ..e}-> b) -> Maybe (a -{Sub msgB, ..e}-> b)
-        = platform
+        = @platform
 
     }
+
+Millis := Int
 
 Time
-  : _{ posix : Int }
-  . { Millis : Int
-
-      now : -{Runtime.Status}-> Time = platform
-      every : Millis -{Runtime.Sub Time}-> Runtime.Feed = platform
-
-    }
+  := _{ posix : Int }
+  .now : -{Runtime.Status}-> Time = @platform
+  .every : Millis -{Runtime.Sub Time}-> Runtime.Feed = @platform
 
 Rand
-  : effect
-  . { int : -{Rand}-> Int = platform )
+  := @effect
+  .int : -{Rand}-> Int = @platform
 
 // different types can't be compared
 WeirdString : String
@@ -675,16 +663,15 @@ List := t -> [ #leaf | #cons(t, List(t)) ]
           loop([], self)
         )
 
-UList := t -> l:List(t) where l.hasNoDuplicates
+UList(t) := l:List(t) where List.hasNoDuplicates(l)
 
-Vec := len:Nat, t -> l:List(t) where l.length == len
+Vec(len:Nat, t) := list:List(t) where List.length(list) == len
 
-Matrix(row:Nat, col:Nat, a)
-  = Vec(row, Vec(col, a))
+Matrix(row:Nat, col:Nat, a) := Vec(row, Vec(col, a))
 
   . transpose
       : Matrix(col, row, a)
-      = @todo
+      = ?
 
 BalancedBinaryTree(depth : Nat, a)
   = { where depth == 0 -> #leaf(a)
@@ -718,6 +705,8 @@ Order := [ #lesserThan | #equal | #greaterThan ]
 
 compare : t, t -> Order
   = { a, b where t == Int -> @todo
+    | (ha, ..ra), (hb, ..rb) ->
+        compare ha hb && compare ra rb
     | _, _ -> @todo
     }
 
@@ -755,7 +744,7 @@ Nullable(t) := [ t | #null ]
 
 /* type */
 Type
-  = [ #type
+  : [ #type
     | #bits([ 8 | 16 | 32 | 64 | 128 ])
     | #var(Type.Var.Ref, Maybe(Type))
     | #custom(Type.Custom.Ref)
@@ -772,13 +761,28 @@ Field.Ref
   = Name.Lower.Ref
 
 
-sum : Int, Int -> Int ? IntOverflow
-(|?) : t ? e, (e -> t) -> t
+sum : Int, Int -> [ Int | ?intOverflow ]
 
+sumWithDefault
+  : Int, Int, Int -> Int
+  = { a, b, default ->
+      sum(a, b)
+      |?intOverflow default
 
+      /* equivalent to
+      ```
+      sum(a, b)
+      |>{ ?intOverflow -> default
+        | i -> i
+        }
+      ```
+      */
+    }
+
+// for up and downcasting
 cast
   : t:Type, v -> [ t | ?impossibleCast ]
-  = @todo
+  = ?
 
 
 /*
@@ -795,11 +799,12 @@ Somewhat peculiarly:
 `->` is an infix operator describing a function that sends the left type to the right one, it also separates the pattern match made on function's parameters form its implementation,
 `?` is an infix operator splitting a type signature into its error tags (on the right) and other variants (on the left),
 `:` serves to declare the type of a symbol in a definition or in a pattern but in an expression it is a boolean operator returning `#true` if the left side exists and matches the given type,
-`=` is only used to declare a symbol's implementation,
+`=` is used to define a symbol's implementation or to set a record's field,
+`:=` is used to define a type's implementation,
 `where` is an infix operator that takes a type signature or a matched pattern and a boolean and statically ensures that the boolean is always true.
 
 The boolean operators are the following infix:
-`==`, `!=`, `<=`, `>=`, `<`, `>`, `&&`, `||`, `==>`, `<==>`, `has` and the unary `!`.
+`==`, `!=`, `<=`, `>=`, `<`, `>`, `&&`, `||`, `==>`, `<==>` and the unary `!`.
 
 There are also the mathematical infix operators:
 `+`, `-`, `*`, `/`, `^` and the unary `-`.
@@ -807,8 +812,10 @@ There are also the mathematical infix operators:
 The construct infixes are:
 `++` to append two `String`s or `List`s,
 `&` to union two records, tuples, `Set`s or `Dict`s,
-`..` notation can be used to mach a list `[ h, .., e ]`, `[ h, ..q, e ]` where `h` is the first element, `e` the last and - in the second case - `q` is a list containing every other element,
+`..` notation can be used to match a list `[ h, .., e ]`, `[ h, ..q, e ]` where `h` is the first element, `e` the last and - in the second case - `q` is a list containing every other element,
+the same notation can be used to construct a list `[ ..listA, elemB, ..listC ]`,
 `..` notation can be used to mach a record `{ fieldA, fieldB, ..r }` where `r` is a record containing all other fields,
+but also to update an existing record `newCoords = { x = 13, ..coords }` (here if `coords == {x = 2, y = 5} then `newCoords == {x = 13, y = 5}`).
 
 There are three pipe infix operators:
 `|>`, `<|`, `|?` where the third one does `t ? e, (e -> t) -> t`.
@@ -819,7 +826,7 @@ Error tags also contains data about the way it has been thrown `{ ?myErr -> myEr
 
 Using `_` as first character of a tag, record field, type name or value name makes it is private.
 
-`Char`s are utf-8 graphemes with their modifiers, not necessarily 8-bit as in C.
+`Char`s are UTF-8 graphemes with their modifiers, not necessarily 8-bit as in C.
 
 Some syntax sugar:
 a record instantiation may not use `=` at all if there is a value in scope that has the same name as the record field,
@@ -836,19 +843,121 @@ a record instantiation may not use `=` at all if there is a value in scope that 
 These are all equivalent:
 ```
 // Type declaration
-Matrix := row:PNat, col:PNat, a:Type -> Vec(row, Vec(col, a))
+Matrix := row:PNat -> col:PNat -> a:Type -> Vec(row, Vec(col, a))
 ```
 <==>
 ```
 // Thanks to type inference
-Matrix := row, col, a -> Vec(row, Vec(col, a))
+Matrix := row -> col -> a -> Vec(row, Vec(col, a))
 ```
 
 
 Arguments of a function can be used in its type signature:
 ```
-cast : target:Type, _ -> [ target | ?impossibleCast ]
+cast : target:Type, origin -> [ target | ?impossibleCast ]
 printf : str:String, PrintfArgs(str) -#stdout(String)-> Void
 ```
 but those have to be evaluated statically otherwise the compiler won't be able to type check.
 */
+
+
+OneOf(t) := { #this t | #that t | #other t }
+
+// patterns can be grouped as long as they expose the same params (same name and type)
+unwrap
+  : OneOf(t) -> t
+  = { #this v
+    | #that v
+    | #other v ->
+        v
+    }
+
+// optional record field
+Options := ( ~darkMode : Bool = #false )
+view : Options -> Html msg = ?
+@> view (~)
+@> view ( darkMode = #true )
+
+
+Cmd(msg) := ? // effect
+Cmd.map : (a -> b), Cmd(a) -> Cmd(b)
+Cmd.run : Cmd(msg) -> msg
+Cmd.dummy : msg -> Cmd(msg)
+
+
+// static dispatch for operator overloading
+
+// recursive function using `self`
+sum
+  : List(Int) -> Int
+  = { (), acc -> acc
+    | (h, ..q), acc ->
+        self(q, acc + h)
+    }($, 0)
+
+
+// # bunch of ideas :
+// evergreen interfaces for clear boundaries and responsibilities
+// benchmark, test and deploy in a single bash cmd
+// progressive delivery and rollback to get user feedback before full delivery
+// privacy conserving bug tracing
+// `Int` used in an expression block represents the module and used in a type block represents the type.
+// codegen instead of macros to be able to read and fix the code when needed
+
+// red green blue programming
+// - red : write failing tests
+// - green : write simplest valid implementation that passes tests
+// - blue : ensure behavior stays invariable while optimizing and benchmarking
+
+// `[]` for domain specific notations ex: `Version[1.2.0]`, `Date[26/02/1995]`, `Regex[...]`
+// or for syntax `Expr[print($str)]( str = #literal(#string("Hello World!")) )`
+// `Matrix[ 1, 2, 3 |
+//        | 4, 5, 6 |
+//        | 7, 8, 9 ]`
+// using any craisy operator symbols with their precedence (pratt parser behind)
+
+f($, b, c)
+{ d -> f(d, b, c) }
+
+$.min
+{ a -> a.min }
+
+list : List((min : Int, max : Int))
+List.map($.min, list)
+
+// # Accessors :
+// --> guaranteed accessors
+// `$.min : (min:t, ..) -> t`
+// `$.1 : (_, t, ..) -> t`
+// `$.#coords.x : #coords(x:t, ..) -> t`
+// `$.12 : l:List(t) -> t where Struct.size(l) > 12`
+// --> unsure accessors
+// `$.[12] : List(t) -> { t | ?missing_value }`
+// `$.["strKey"] : Dict(String, t) -> { t | ?missing_value }`
+// `$.[#ok] : Maybe(t) -> { t | ?missing_value }`
+// `$.[#north].km : { #north(km:t, ..) | .. } -> { t | ?missing_value }`
+
+// `namespace Example as Ex` or `namespace Json.Decode as D`
+// end of block on "\n\n"
+/*
+Move files into the static folder and get them as strings and access them via the `Static` module.
+```bash
+dialang load myFile path="myFile.txt"
+dialang load myOtherFile html="..."
+```
+Those can now be found as `String`s under `Static.myFile` and `Static.myOtherFile`.
+
+```bash
+dialang publish MyPackage
+```
+
+Move packages in and out of src to edit them and have project specific versions of them.
+```bash
+dialang hide MyPackage
+dialang show MyPackage
+```
+
+
+minus
+  : a:Nat, b:Nat -> Nat where a >= b else ?negative_nat
+  = ?

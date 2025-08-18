@@ -804,7 +804,7 @@ Somewhat peculiarly:
 `where` is an infix operator that takes a type signature or a matched pattern and a boolean and statically ensures that the boolean is always true.
 
 The boolean operators are the following infix:
-`==`, `!=`, `<=`, `>=`, `<`, `>`, `&&`, `||`, `==>`, `<==>` and the unary `!`.
+`==`, `!=`, `<=`, `>=`, `<`, `>`, `&&`, `||`, `==>`, `<==>`, the unary `!` and the subtyping relations `<:` and `>:`.
 
 There are also the mathematical infix operators:
 `+`, `-`, `*`, `/`, `^` and the unary `-`.
@@ -879,13 +879,54 @@ view : Options -> Html msg = ?
 @> view ( darkMode = #true )
 
 
-Cmd(msg) := ? // effect
-Cmd.map : (a -> b), Cmd(a) -> Cmd(b)
-Cmd.run : Cmd(msg) -> msg
-Cmd.dummy : msg -> Cmd(msg)
+// side effects
+Task.await : ( Task(msg), .blocking : Bool = #true ) -> msg
+// if `blocking` is `#true` then wait for response before running other side effects
+// using Task.await wraps first named parent function's output into a `Task`
+// is not compatible with variable parameters
+Task.dummy : msg -> Task(msg)
+Task.map : (a -> b), Task(a) -> Task(b)
+Task.andThen : (a -> Task(b)), Task(a) -> Task(b)
 
+// might use `!` notation for await?
+// `cap.print!("Hello World!")`
+// <==> `cap.print("Hello World!") |> Task.await`
+// makes await less explicit which isn't ideal
+// but might happen so often that it would become annoying
+// though it encourages to write pure functions
 
-// static dispatch for operator overloading
+// could work with feeds
+Feed.push : Task(msg), Feed(msg) -> Feed(msg)
+Feed.pull : Feed(msg) -> msg
+Feed.map : (a -> b), Feed(a) -> Feed(b)
+Feed.andThen : (a -> Feed(b)), Feed(a) -> Feed(b)
+Feed.merge : Feed(a), Feed(b) -> Feed({a|b})
+
+// or update loop
+init : cap, flags -> state, Task(msg)
+update : cap, msg, state -> state, Task(msg)
+
+// alternative design for side effecs
+Interface(msgOut, msgIn)
+  := ( .await! : msgOut -> msgIn
+     , .await_timeout! : Duration, msgOut -> {msgIn | ?timeout}
+     //, .subscribe! : subscription -> ()
+     //, .push! : msgOut -> ()
+     //, .pull! : msgIn
+     //, .pull_timeout! : Duration -> {msgIn | ?timeout}
+     //, .queue_length! : Nat
+     //, .subscriptions! : Set(subscription)
+     )
+Runtime(flags, msgOut, subscription, msgIn, state)
+  := ( .init! : Interface(msgOut, msgIn), flags -> state, msgOut
+     , .update! : Interface(msgOut, msgIn), msgIn, state -> state, msgOut
+     )
+// constrain access by mapping on the interface
+namespace Interface as Itf
+Itf.mapMsgOut : (a -> b), Itf(a, s, i) -> Itf(b, s, i)
+Itf.mapSubscription : ((a -> b), (b -> a)), Itf(o, a, i) -> Itf(o, b, i)
+Itf.mapMsgIn : (a -> b), Itf(o, s, a) -> Itf(o, s, b)
+Itf.merge : Itf(oa, sa, ia), Itf(ob, sb, ib) -> Itf({oa|ob}, {sa|sb}, {ia|ib})
 
 // recursive function using `self`
 sum
@@ -895,8 +936,8 @@ sum
         self(q, acc + h)
     }($, 0)
 
-
 // # bunch of ideas :
+// static dispatch for operator overloading
 // evergreen interfaces for clear boundaries and responsibilities
 // benchmark, test and deploy in a single bash cmd
 // progressive delivery and rollback to get user feedback before full delivery
@@ -922,7 +963,7 @@ f($, b, c)
 $.min
 { a -> a.min }
 
-list : List((min : Int, max : Int))
+list : List((.min : Int, .max : Int))
 List.map($.min, list)
 
 // # Accessors :
@@ -936,6 +977,8 @@ List.map($.min, list)
 // `$.["strKey"] : Dict(String, t) -> { t | ?missing_value }`
 // `$.[#ok] : Maybe(t) -> { t | ?missing_value }`
 // `$.[#north].km : { #north(km:t, ..) | .. } -> { t | ?missing_value }`
+// # Builders :
+// `("hello", .[12] = "twelve", .foo = "foo")`
 
 // `namespace Example as Ex` or `namespace Json.Decode as D`
 // end of block on "\n\n"
@@ -956,8 +999,58 @@ Move packages in and out of src to edit them and have project specific versions 
 dialang hide MyPackage
 dialang show MyPackage
 ```
-
+*/
 
 minus
   : a:Nat, b:Nat -> Nat where a >= b else ?negative_nat
   = ?
+
+three_repeats
+  : (Char, Int, String) ** 3
+  = ('a', 12, "hello") ** 3
+// == ('a', 12, "hello", 'a', 12, "hello", 'a', 12, "hello")
+
+multiline_string =
+  \\Hello!
+  \\This nice syntax comes from Zig.
+  \\I find it gorgeous :3
+
+// find the right balance between concision and expliciteness
+// `let-in`, `if-then-else`, `match`, `priv`, `ghost`
+
+// use `Infix(( a, b -> c ), .precedence:Nat, .associativity:{#left | #right})` type to implement infix operators
+
+// locally mutable values are very attractive
+
+// use infix operators from Int and Matrix modules
+// this might be needed for disambiguation and for using domain specific infixes
+intSum
+  : Int, Int -> Int
+  = use Int infixes a + b
+matrixSum
+  : Matrix, Matrix -> Matrix
+  = use Matrix infixes a + b
+
+// use `~` symbol for instantiating and modifying variables
+genUID
+  : ~Seed -> UID
+  = { ~seed ->
+        let rand = Random.step(~seed) in
+        #_uid rand
+    }
+// instead of having to deal with it in your return
+genUID
+  : Seed -> (UID, Seed)
+  = { seed ->
+        let (rand, newSeed) = Random.step(seed) in
+        (#_uid rand, newSeed)
+    }
+/*
+```
+~i = 12
+~i = i + 1
+```
+We only use the `~` when the variable gets modified.
+It can be used for function's parameters and local variables only (`List(~Int)` doesn't make sense).
+Functions with variable params can't use await.
+*/

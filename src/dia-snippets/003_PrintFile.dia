@@ -1,0 +1,39 @@
+
+# Print File
+
+This cli tool prints the content of the file given as first argument.
+*/
+
+main!
+  : Cli.Main
+  = { itf, () ->
+      itf.print!( "You need to provide a file path as first argument." )
+      |> { _ -> #generic_error }
+
+    | itf, (filePathStr, ..) ->
+      Fs.Path.fromString(filePathStr)
+      |> itf.read!( $ |> #file )
+      |> { ?invalid_file_path ->
+            ( "The first argument \"${filePathStr}\" isn't a valid file path."
+            , .exit_code = #generic_error
+            )
+
+         | ?file_not_found ->
+            ( "No file found at \"${filePathStr}\"."
+            , .exit_code = #generic_error
+            )
+
+         | ?access_denied ->
+            ( "This script doesn't have the authorization to read \"${filePathStr}\"."
+            , .exit_code = #generic_error
+            )
+
+         | file ->
+            ( file, .exit_code = #success )
+
+         }
+      |> { str, .exit_code ->
+            itf.print!(str)
+            |> { _ -> exit_code }
+         }
+    }

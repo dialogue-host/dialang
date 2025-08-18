@@ -1,0 +1,11 @@
+
+# Hello World Program
+
+This is our first simple cli program.
+*/
+
+main
+  : Cli.Main
+  = { cap, _ ->
+        let () = cap.print!( "Hello World!" ) in 0
+    }

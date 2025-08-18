@@ -103,7 +103,7 @@ The boolean expression given after the `where` keyword has to be true otherwise 
 
 Nat := i:I16 where i >= 0
 NEList(a) := l:List(a) where Struct.length(l) > 0
-Range(n) := ( min:n, max:n ) where min <= max
+Range(n) := ( .min:n, .max:n ) where min <= max
 
 // some usage examples
 toNEList
@@ -114,8 +114,8 @@ toNEList
 
 toRange
   : Int, Int -> Range
-  = { a, b where a <= b -> ( min = a, max = b )
-    | a, b -> ( min = b, max = a )
+  = { a, b where a <= b -> ( .min = a, .max = b )
+    | a, b -> ( .min = b, .max = a )
     }
 
 average
@@ -159,7 +159,7 @@ Core types are one of the most essential building blocks of the language and hav
 ### Structs
 
 Structs combine multiple types/values into a single one. They are a combination of the concept of tuples and records found in some other languages.
-Their fields can be named, unnamed or optional.
+Their fields can be named, unnamed, dynamically-named or be optional.
 
 Struct fields can be accessed via the `.` notation and removed using `\` inserted with the `..` notation :
 */
@@ -167,19 +167,18 @@ Struct fields can be accessed via the `.` notation and removed using `\` inserte
 MyStructType :=
   ( String
   , String
-  , foo : String
-  , bar : String
-  , ~optional : String = "Default string"
+  , .foo : String
+  , .bar : String
+  , .optional : String = "Default string"
   )
 
 // optional fields will take their default value if not filled when the value gets casted into the type
 myStruct : MyStructType
-  = ( "hello", "world", foo = "foo", bar = "bar", ~ )
-// the `~` makes it explicit that optional fields are inserted
+  = ( "hello", "world", .foo = "foo", .bar = "bar" )
 
 // named fields have to be declared after unnamed fields but in any order
 myStruct1 : MyStructType
-  = ( "hello", "world", optional = "Default string", bar = "bar", foo = "foo" )
+  = ( "hello", "world", .optional = "Default string", .bar = "bar", .foo = "foo" )
 // == myStruct
 
 // field access
@@ -188,31 +187,38 @@ hello = myStruct.0
 world = myStruct.1
 
 // add fields
-myNewStruct = ( "my", ..myStruct, "John", pow = "pow" )
-// == ( "my", "hello", "world", "John", foo = "foo", bar = "bar", pow = "pow", optional = "Default string" )
+myNewStruct = ( "my", ..myStruct, "John", .pow = "pow" )
+// == ( "my", "hello", "world", "John", .foo = "foo", .bar = "bar", .pow = "pow", .optional = "Default string" )
 
 // remove named field
 myNewStruct1 = myStruct\foo
-// == ( "hello", "world", bar = "bar", optional = "Default string" )
+// == ( "hello", "world", .bar = "bar", .optional = "Default string" )
 
 // remove unnamed fields
 myNewStruct2 = myNewStruct\2\0\optional
-// == ( "hello", "John", foo = "foo", bar = "bar", pow = "pow" )
+// == ( "hello", "John", .foo = "foo", .bar = "bar", .pow = "pow" )
 
 // `\_` can be used to only replace the needed fields and avoid repetitions
 myNewStruct4
   = ( ..myStruct\_
-    , foo = "My new fancy foo string!"
-    , optional = "Dark mode"
+    , .foo = "My new fancy foo string!"
+    , .optional = "Dark mode"
     )
 
 // update fields
-myNewStruct3 = ( ..myStruct\_\1\optional, "Henry", foo = "My new fancy foo string!" )
-// == ("hello", "Henry", foo = "My new fancy foo string!", bar = "bar" )
+myNewStruct3 = ( ..myStruct\_\1\optional, "Henry", .foo = "My new fancy foo string!" )
+// == ("hello", "Henry", .foo = "My new fancy foo string!", .bar = "bar" )
 
 // also works for struct types except for field access
-MyStructType1 : ( ..MyStructType, pow:String )
+MyStructType1 : ( ..MyStructType, .pow:String )
 MyStructType2 : MyStructType\foo
+
+// dynamically-named fields
+Dict(key, value) := ( .[key], value ) where ! key >: Nat
+// can't use `Nat` as they are reserved for unnamed fields and - by extension - lists
+
+List(a) := { () | (a, ..List(a)) }
+NeList(a) := ( a, ..List(a) )
 
 /*
 

@@ -884,7 +884,7 @@ Task.await : ( Task(msg), .blocking : Bool = #true ) -> msg
 // if `blocking` is `#true` then wait for response before running other side effects
 // using Task.await wraps first named parent function's output into a `Task`
 // is not compatible with variable parameters
-Task.dummy : msg -> Task(msg)
+Task.mock : msg -> Task(msg)
 Task.map : (a -> b), Task(a) -> Task(b)
 Task.andThen : (a -> Task(b)), Task(a) -> Task(b)
 
@@ -928,6 +928,22 @@ Itf.mapSubscription : ((a -> b), (b -> a)), Itf(o, a, i) -> Itf(o, b, i)
 Itf.mapMsgIn : (a -> b), Itf(o, s, a) -> Itf(o, s, b)
 Itf.merge : Itf(oa, sa, ia), Itf(ob, sb, ib) -> Itf({oa|ob}, {sa|sb}, {ia|ib})
 
+// ## handle capabilities implicitly
+// current favorite
+Print := ( .print:( String -> () ), .. )
+printIf
+  : Bool, String, .cap:Print -> ()
+  = { #true, str -> cap.print(str)
+    | #false, _ -> ()
+    }
+// using `!` when calling a function thakes the parent's `.cap` in its args
+log : String, .verbose:Bool, .cap:Print -> ()
+  = printIf!(verbose, $) // == { str -> printIf(verbose, str, .cap) }
+// short running side effects (random, hash, print, encrypt, fs, ...) are run immediately (`_ -> ()` signatures)
+// while long running ones (network, ...) give are run concurrently (`_ -> Cmd(msg)` signatures)
+// any value can be wrapped into a `Cmd` in order to be run concurrently using `Cmd.callback : (_ -> msg) -> Cmd(msg)`.
+
+
 // recursive function using `self`
 sum
   : List(Int) -> Int
@@ -944,6 +960,7 @@ sum
 // privacy conserving bug tracing
 // `Int` used in an expression block represents the module and used in a type block represents the type.
 // codegen instead of macros to be able to read and fix the code when needed
+// have a document explaining why values have been removed or changed and how to fix the implementation (maybe automated code fixes)
 
 // red green blue programming
 // - red : write failing tests
@@ -1036,21 +1053,139 @@ genUID
   : ~Seed -> UID
   = { ~seed ->
         let rand = Random.step(~seed) in
-        #_uid rand
+        #_uid(rand)
     }
 // instead of having to deal with it in your return
 genUID
   : Seed -> (UID, Seed)
   = { seed ->
         let (rand, newSeed) = Random.step(seed) in
-        (#_uid rand, newSeed)
+        (#_uid(rand), newSeed)
     }
 /*
 ```
-~i = 12
+i = 12
 ~i = i + 1
 ```
 We only use the `~` when the variable gets modified.
 It can be used for function's parameters and local variables only (`List(~Int)` doesn't make sense).
 Functions with variable params can't use await.
+*/
+
+
+// specify the order of execution for side effects
+// by piping the effectful functions into one an other
+() =
+  this!(arg1)
+  |>_ thanThat!()
+  |> andFinally!($)
+// equivalent to:
+() =
+  this(.cap, arg1)
+  |> { _ -> thanThat(.cap) }
+  |> andFinally(.cap, $)
+
+
+// for and while loops introduce many concepts
+// and they are too different from other languages to feel natural
+// so they probably won't land in dialang
+find_index : a, List(a) -> Nat
+find_index_for
+  = { target, list ->
+        let
+          // let-in block
+          i = 1
+        for ~elem in list // traverse list
+        do
+          // repeated let-in block
+          ~i =|> increment
+        until elem == target // conditional end
+        then i // if ended early
+        else #not_found // otherwise
+    }
+find_index_while
+  = { target, list ->
+        let
+          // let block
+          elem = List.pop(~list)
+          i = 0
+        while elem /= target // conditional end
+        do
+          // repeated let block
+          ~i =|> increment
+        then
+          // in block
+          if List.isEmpty(list)
+          then #not_found
+          else i
+    }
+find_index_recursive
+  = { index, target, [h, ..] where h == target -> index
+    | index, target, [_, ..q] -> self(index + 1, target, q)
+    }(0, ..$)
+// some other functions
+foldl
+  = { func, acc, list -> // write the ~ in params only when the given arg gets modified
+        for ~elem in list
+        do ~acc = func(elem, acc)
+        then acc
+    }
+foldr
+  = { func, acc, list ->
+        let ~list =|> List.revert
+        while not List.isEmpty(list)
+        do ~acc =|> func(List.pop(~list), $)
+        then acc
+    }
+first
+  = { func, list ->
+        for ~elem in list
+        until func(elem)
+        then elem // end loop early
+        else #not_found
+    }
+// compared to the recursive implementations
+foldl_rec
+  = { func, acc, [h, ..q] ->
+        self(func, func(h, acc), q)
+    | _, acc, [] ->
+        acc
+    }
+foldr_rec
+  = { func, acc, [..q, l] ->
+        self(func, func(l, acc), q)
+    | _, acc, [] ->
+        acc
+    }
+first_rec
+  = { func, [h, ..] where func(h) -> h
+    | func, [_, ..q] -> self(func, q)
+    }
+
+
+/*
+
+Code can be run at different times:
+- Run time : when file is run as a script
+- Compile time : load static content (files, env, etc.), code generation
+- Test time : tests, static checks
+- Debug time : hot reload, time travel debugger
+- IDE time : inline gui
+- Prod time : final users (everything that doesn't have the `@` symbol)
+
+The `@comp`, `@test`, `@debug`, `@ide` can be used in pattern mattching to have different behaviors based on the context.
+
+~~~ this idea is fairly vague ~~~
+
+```
+@comp.load : String -> String // takes the path of a file and load its content as a static value
+@comp.check : ... // static checking
+@comp.test : ... // unit test
+@debug.log : .msg:Maybe(String)=#nothing, a -> a // log
+@debug.todo : .msg:Maybe(String)=#nothing -> a // crash
+@debug.expect : .msg:Maybe(String)=#nothing, (a -> Bool), a -> a // log an error if the expectation is broken
+
+@> 3 + 5 // show the result inline in the ide (= inline repl)
+```
+
 */

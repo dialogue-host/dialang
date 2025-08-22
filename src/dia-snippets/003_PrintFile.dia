@@ -4,36 +4,37 @@
 This cli tool prints the content of the file given as first argument.
 */
 
-main!
-  : Cli.Main
-  = { itf, () ->
-      itf.print!( "You need to provide a file path as first argument." )
+main
+  : .args:List(String), .cap:Cli.Cap -> Cli.ExitCode
+  = let
+      printErr
+        = { errStr ->
+              cap.print( errStr, .out = #stderr )
+              |>_ #generic_error
+          }
+    in
+    { .args=[] ->
+      cap.print( "You need to provide a file path as first argument." )
       |> { _ -> #generic_error }
 
-    | itf, (filePathStr, ..) ->
+    | .args=[filePathStr, ..] ->
       Fs.Path.fromString(filePathStr)
-      |> itf.read!( $ |> #file )
-      |> { ?invalid_file_path ->
-            ( "The first argument \"${filePathStr}\" isn't a valid file path."
-            , .exit_code = #generic_error
-            )
+      |> cap.read( $ |> #file )
+      |>  { ?invalid_file_path ->
+              "The first argument \"${filePathStr}\" isn't a valid file path."
+              |> printErr
 
-         | ?file_not_found ->
-            ( "No file found at \"${filePathStr}\"."
-            , .exit_code = #generic_error
-            )
+          | ?file_not_found ->
+              "No file found at \"${filePathStr}\"."
+              |> printErr
 
-         | ?access_denied ->
-            ( "This script doesn't have the authorization to read \"${filePathStr}\"."
-            , .exit_code = #generic_error
-            )
+          | ?access_denied ->
+              "This script doesn't have the authorization to read \"${filePathStr}\"."
+              |> printErr
 
-         | file ->
-            ( file, .exit_code = #success )
+          | fileContent:String ->
+              cap.print(fileContent)
+              |>_ #success
 
-         }
-      |> { str, .exit_code ->
-            itf.print!(str)
-            |> { _ -> exit_code }
-         }
+          }
     }

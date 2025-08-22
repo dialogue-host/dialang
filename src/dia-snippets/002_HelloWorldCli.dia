@@ -5,7 +5,6 @@ This is our first simple cli program.
 */
 
 main
-  : Cli.Main
-  = { cap, _ ->
-        let () = cap.print!( "Hello World!" ) in 0
-    }
+  : .args:List(String), .cap:Cli.Cap -> Cli.ExitCode
+  = cap.print( "Hello World!" )
+    |>_ #success

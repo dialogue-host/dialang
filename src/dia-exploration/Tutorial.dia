@@ -84,7 +84,7 @@ As for value declaration, type declaration has to be written between the `:=` an
 */
 
 I16 := Bytes(16)
-User := ( firstName:String, lastName:String, age:Nat )
+User := ( .firstName:String, .lastName:String, .age:Nat )
 Coords := ( I16, I16 )
 
 Bool := { #true | #false }

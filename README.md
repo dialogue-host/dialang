@@ -3,7 +3,7 @@
 Dialang is a opinionated language for the masses to write malleable and reliable software.
 
 - **No runtime error** : Type check your code statically and ensure you don't miss any edge case. (Statically type safe)
-- **No broken state** : Constrain your datatypes to guarantee that they can't hold invalid or impossible data. (Refinement types)
+- **No broken state** : Constrain your datatypes to guarantee that they can't hold invalid or impossible data. (Refinement/liquid types)
 - **The language is the framework** : The language makes every codebase follow the best practices making code browsable, testable and consistent. (locality of behavior, single source of truth, The Elm Architecture, ...)
 - **Fearless refactoring** : Fast and friendly compiler messages guides you through your changes. (Elm quality error messaging and compiler optimization)
 - **Run with holes** : Run incomplete programs and incrementally build your software by filling the blanks. (Hazel holes)
@@ -14,6 +14,10 @@ Dialang is a opinionated language for the masses to write malleable and reliable
 - **Platform's abstraction** : Run your programs on every platform that can handle the proper side effects. (Roc's platform abstraction)
 - **Code internationalization** : Edit and translate your codebase and packages in different spoken languages while guaranteeing syntactic validity and consistency. (Unison's structural naming + code and documentation translation tables)
 - **The State is the Database** : Stores the state in a manner that complies with database standards. (Lamdera)
+- **Custom static checking**
+- **Programmable documentation** : markdown, math notation, run code inline, interactive, referenced values
+- **Observable** : run code remotely,
+- **Modable development environment**
 
 Dialang is built in order to fulfill [Dialogue's programming language requirements][1].
 

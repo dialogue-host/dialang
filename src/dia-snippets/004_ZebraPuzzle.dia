@@ -1,0 +1,167 @@
+# Zebra Puzzle
+
+This puzzle comes from the [Unison track on Exercism](https://exercism.org/tracks/unison/exercises/zebra-puzzle).
+
+We want to solve it in Dialang to see if we can stretch its design on such a difficult exercise.
+
+We need to figure out :
+- Which of the residents drinks water?
+- Who owns the zebra?
+
+While knowing that :
+- There are five houses.
+- The Englishman lives in the red house.
+- The Spaniard owns the dog.
+- The person in the green house drinks coffee.
+- The Ukrainian drinks tea.
+- The green house is immediately to the right of the ivory house.
+- The snail owner likes to go dancing.
+- The person in the yellow house is a painter.
+- The person in the middle house drinks milk.
+- The Norwegian lives in the first house.
+- The person who enjoys reading lives in the house next to the person with the fox.
+- The painter's house is next to the house with the horse.
+- The person who plays football drinks orange juice.
+- The Japanese person plays chess.
+- The Norwegian lives next to the blue house.
+
+*/
+
+House := Int.Range(0, 4) // == { 0 | 1 | 2 | 3 | 4 }
+Solution := ( .water_drinker:String, .zebra_owner:String )
+
+each
+  : (House -> { Solution | ?dead_end }) -> { Solution | ?dead_end }
+  = { solver, [house, ..rest] ->
+        solver(house)
+        |?dead_end self(solver, rest)
+    | _, [] ->
+        ?dead_end
+    }($, Int.range(0,4))
+
+is_not_neighbor
+  = { a, b -> a /= b + 1 && a /= b - 1}
+
+solve : { Solution | ?dead_end } =
+  ( englishman <- each
+    red = englishman
+
+    spaniard <- each
+    dog = spaniard
+    if englishman == spaniard
+        return ?dead_end
+
+    ukrainian <- each
+    tea = ukrainian
+    if englishman == ukrainian
+       || spaniard == ukrainian
+        return ?dead_end
+
+    norwegian <- each
+    if englishman == norwegian
+       || spaniard == norwegian
+       || ukrainian == norwegian
+        return ?dead_end
+
+    japanese <- each
+    chess = japanese
+    if englishman == japanese
+       || spaniard == japanese
+       || ukrainian == japanese
+       || norwegian == japanese
+        return ?dead_end
+
+    ivory <- each
+    green = ivory + 1
+    coffee = green
+    if red == ivory
+       || red == green
+       || ivory == 4
+       || tea == coffee
+        return ?dead_end
+
+    yellow <- each
+    painter = yellow
+    if red == yellow
+       || green == yellow
+       || ivory == yellow
+       || painter == chess
+        return ?dead_end
+
+    blue <- each
+    if red == blue
+       || green == blue
+       || ivory == blue
+       || yellow == blue
+       || is_not_neighbor(norwegian, blue)
+        return ?dead_end
+
+    snail <- each
+    dancing == snail
+    if dog == snail
+       || chess == dancing
+       || painter == dancing
+        return ?dead_end
+
+    fox <- each
+    if dog == fox
+       || snail == fox
+       || is_not_neighbor(reading, fox)
+        return ?dead_end
+
+    horse <- each
+    if dog == horse
+       || snail == horse
+       || fox == horse
+       || is_not_neighbor(painter, horse)
+        return ?dead_end
+
+    milk <- each
+    if tea == milk
+       || coffee == milk
+        return ?dead_end
+
+    orange_juice <- each
+    football = orange_juice
+    if tea == orange_juice
+       || coffee == orange_juice
+       || milk == orange_juice
+       || chess == football
+       || painter == football
+       || dancing == football
+        return ?dead_end
+
+    reading <- each
+    if chess == reading
+       || painter == reading
+       || dancing == reading
+       || football == reading
+        return ?dead_end
+
+    water <- each
+    if tea == water
+       || coffee == water
+       || milk == water
+       || orange_juice == water
+        return ?dead_end
+
+    zebra <- each
+    if dog == zebra
+       || snail == zebra
+       || fox == zebra
+       || horse == zebra
+        return ?dead_end
+
+    owner
+      : .h:Home -> String
+      = { where h == englishman -> "Englishman"
+        | where h == spaniard -> "Spaniard"
+        | where h == ukrainian -> "Ukrainian"
+        | where h == norwegian -> "Norwegian"
+        | where h == japanese -> "Japanese"
+        }
+
+    ( .water_drinker = owner(.h=water)
+    , .zebra_owner = owner(.h=zebra)
+    )
+  )

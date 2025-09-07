@@ -603,19 +603,25 @@ while
 Fallible<errors : List error> a : core
 Effectful<effects : List effect> a : core
 
-// If not explicitly stated, every type is considered to have `? []` attached which means they never fail.
-// infix functions are all set by the language
-|> : (a, a -> b) -> b
-|? : (a ? e, e -> a) -> a
-
 Errors : [ ?http String | ?divideByZero ]
 Effects : [ !readFile | !network ]
 
 Fallible.default : (a, a ? _) -> a
 always : (a, _) -> a
 
+// If not explicitly stated, every type is considered to have `? []` attached which means they never fail.
+// infix functions are all set by the language
+|> : a, (a -> b) -> b
+<| : (a -> b), a -> b
+>> : (a -> b), (b -> c) -> (a -> c)
+<< : (b -> c), (a -> b) -> (a -> c) // unsure this is a good one to keep
+|>_ : _, a -> a
+|(?my_err)> : { ?my_err | a }, a -> a
+|(#my_tag(..struct))> : { #my_tag(..struct) | a }, (struct -> b) -> { b | a }
+|(val:MyType)> : { MyType | a }, (MyType -> b) -> { b | a }
+
 // type that is impossible to instantiate.
-Never : [ #never Never ]
+Never : #never(Never)
 never : Never -> a
 
 /*
@@ -961,6 +967,7 @@ sum
 // `Int` used in an expression block represents the module and used in a type block represents the type.
 // codegen instead of macros to be able to read and fix the code when needed
 // have a document explaining why values have been removed or changed and how to fix the implementation (maybe automated code fixes)
+// pause debugger, make changes and continue
 
 // red green blue programming
 // - red : write failing tests
@@ -988,16 +995,18 @@ List.map($.min, list)
 // `$.min : (min:t, ..) -> t`
 // `$.1 : (_, t, ..) -> t`
 // `$.#coords.x : #coords(x:t, ..) -> t`
-// `$.12 : l:List(t) -> t where Struct.size(l) > 12`
+// `$.12 : l:List(t) -> t where List.length(l) > 12`
 // --> unsure accessors
 // `$.[12] : List(t) -> { t | ?missing_value }`
 // `$.["strKey"] : Dict(String, t) -> { t | ?missing_value }`
 // `$.[#ok] : Maybe(t) -> { t | ?missing_value }`
 // `$.[#north].km : { #north(km:t, ..) | .. } -> { t | ?missing_value }`
+// `$.[:t] : { t | .. } -> { t | ?missing_value }`
 // # Builders :
 // `("hello", .[12] = "twelve", .foo = "foo")`
 
 // `namespace Example as Ex` or `namespace Json.Decode as D`
+// `expose concat, prepend from List`
 // end of block on "\n\n"
 /*
 Move files into the static folder and get them as strings and access them via the `Static` module.
@@ -1018,6 +1027,7 @@ dialang show MyPackage
 ```
 */
 
+// use `else` when the type condition can't be checked statically
 minus
   : a:Nat, b:Nat -> Nat where a >= b else ?negative_nat
   = ?
@@ -1052,20 +1062,25 @@ matrixSum
 genUID
   : ~Seed -> UID
   = { ~seed ->
-        let rand = Random.step(~seed) in
+        rand = Random.step(~seed)
+
         #_uid(rand)
     }
 // instead of having to deal with it in your return
 genUID
   : Seed -> (UID, Seed)
   = { seed ->
-        let (rand, newSeed) = Random.step(seed) in
-        (#_uid(rand), newSeed)
+        rand = Random.step(seed)
+
+        (#_uid(rand.0), rand.newSeed)
     }
 /*
 ```
 i = 12
 ~i = i + 1
+dict = ( .["a"] = "AAA", .["b"] = "BBB" )
+~dict.["c"] = "CCC"
+~dict =|> ( .["d"] = "DDD", ..$ )
 ```
 We only use the `~` when the variable gets modified.
 It can be used for function's parameters and local variables only (`List(~Int)` doesn't make sense).
@@ -1091,7 +1106,7 @@ Functions with variable params can't use await.
 // so they probably won't land in dialang
 find_index : a, List(a) -> Nat
 find_index_for
-  = { target, list ->
+  = { isTarget, list ->
         let
           // let-in block
           i = 1
@@ -1099,30 +1114,36 @@ find_index_for
         do
           // repeated let-in block
           ~i =|> increment
-        until elem == target // conditional end
+        until isTarget(elem) // conditional end
         then i // if ended early
-        else #not_found // otherwise
+        else ?not_found // otherwise
     }
 find_index_while
-  = { target, list ->
+  = { isTarget, list ->
         let
           // let block
           elem = List.pop(~list)
           i = 0
-        while elem /= target // conditional end
+        while not isTarget(elem) // conditional end
         do
           // repeated let block
           ~i =|> increment
         then
           // in block
           if List.isEmpty(list)
-          then #not_found
+          then ?not_found
           else i
     }
-find_index_recursive
-  = { index, target, [h, ..] where h == target -> index
-    | index, target, [_, ..q] -> self(index + 1, target, q)
-    }(0, ..$)
+find_index_rec
+  : (a -> Bool), List(a) -> { Int | ?not_found }
+  = (0, ..$)
+    >> { .., [] ->
+          ?not_found
+       | index, isTarget, [ h, .. ] where isTarget(h) ->
+          index
+       | index, isTarget, [ _, ..q ] ->
+          self(index + 1, isTarget, q)
+       }
 // some other functions
 foldl
   = { func, acc, list -> // write the ~ in params only when the given arg gets modified
@@ -1142,7 +1163,7 @@ first
         for ~elem in list
         until func(elem)
         then elem // end loop early
-        else #not_found
+        else ?not_found
     }
 // compared to the recursive implementations
 foldl_rec
@@ -1165,13 +1186,13 @@ first_rec
 
 /*
 
-Code can be run at different times:
-- Run time : when file is run as a script
-- Compile time : load static content (files, env, etc.), code generation
-- Test time : tests, static checks
-- Debug time : hot reload, time travel debugger
-- IDE time : inline gui
-- Prod time : final users (everything that doesn't have the `@` symbol)
+Code can be run at different phases:
+- Run phase : when file is run as a script
+- Compile phase : load static content (files, env, etc.), code generation
+- Test phase : tests, static checks
+- Debug phase : hot reload, time travel debugger
+- IDE phase : inline gui
+- Prod phase : final users (everything that doesn't have the `@` symbol)
 
 The `@comp`, `@test`, `@debug`, `@ide` can be used in pattern mattching to have different behaviors based on the context.
 
@@ -1189,3 +1210,17 @@ The `@comp`, `@test`, `@debug`, `@ide` can be used in pattern mattching to have 
 ```
 
 */
+
+// end block when there is no
+// no let-in blocks
+
+// left arrow notation `v <- f \n do_something(v)`
+// where `f : (a -> b) -> b`
+// is equivalent to `f({v -> do_something(v)})`
+
+traverseStruct
+  = { ( ._=val, ..rest), acc ->
+        // val will cover every named and unnamed fields of the struct
+        self(rest, (do_something(val), ..acc))
+    | (), acc -> acc
+    }($, ())

@@ -1,0 +1,134 @@
+# Alphametics
+
+This puzzle comes from the [Roc track on Exercism](https://exercism.org/tracks/roc/exercises/alphametics).
+
+We want to solve it in Dialang to see if we can stretch its design on such a difficult exercise.
+
+We are given a [verbal arythmetic](https://en.wikipedia.org/wiki/Verbal_arithmetic) sum and we have to figure the number-letter correspondence.
+
+*/
+
+
+Digit := Int.Range(0, 9)
+Letter := c:Char where Char.isUpper(c)
+Word := NeList(Letter)
+Equation := (.left_sum:NeList(Word),.right_sum:NeList(Word))
+Solution := d:Dict(Letter, Digit) where Dict.values(d) |> List.isUnique
+
+
+solve
+  : Equation -> { Solution | ?no_solution }
+  = { (.left_sum, .right_sum) ->
+        letters
+          = ( left_sum ++ right_sum
+              |> List.concat
+              |> List.unique
+            )
+
+        if List.length(letters) > 10
+        return ?no_solution
+
+        digits
+          = Int.range(0, 9)
+
+        for_each_mapping
+          : (Solution -> Bool) -> { Solution | ?no_solution }
+          = { l=[lh, ..lq], [dh, ..dq], tried, mapping ->
+                recurse = self
+                recurse( is_solution, lq, dq ++ tried, [], [(lh, dh), ..mapping] )
+                |%> { ?not_found -> recurse( is_solution, l, dq, [dh, ..tried], mapping ) }
+
+            | [], _, _, mapping, .is_solution ->
+                if is_solution(mapping)
+                then mapping
+                else ?not_found
+
+            | [_, ..], [], _, mapping ->
+                if mapping == []
+                then ?no_solution
+                else ?not_found
+
+            }(letters, digits, [], [], .is_solution=$)
+
+
+        possible_solution <- for_each_mapping
+
+        word_to_nat
+          : Word -> Nat
+          = List.foldl(
+              { c, acc -> acc * 10 + Dict.get(c, possible_solution)},
+              0, $
+            )
+
+        sum_words
+          : List(Word) -> Nat
+          = List.foldl(
+              { w, acc -> acc + word_to_nat(w) },
+              0, $
+            )
+
+        sum_words(left_sum) == sum_words(right_sum)
+    }
+
+
+str_to_eq
+  : Str -> { Equation | ?invalid_equation }
+  = { str ->
+        equation_regex
+          : Regex(Equation)
+          = ( word_regex = " *([A-Z]+) *"
+              summed_words_regex = "${word_regex}(?:\+${word_regex})*"
+              eq_regex = "/^${summed_words_regex}==${summed_words_regex}$/"
+              matching_to_eq
+                = { (hl, ll, hr, lr) ->
+                      (.left_sum=[hl, ..ll], .right_sum=[hr, ..lr])
+                  }
+
+              Regex.from_str(eq_regex)
+              |> Regex.map(matching_to_eq, $)
+            )
+
+        Regex.match(equation_regex, eq)
+        |%> { ?no_match -> ?invalid_equation }
+    }
+
+
+str_to_eq_without_regex
+  : Str -> { Equation | ?invalid_equation }
+  = { [' ', ..q], maybe_word, ls, rs ->
+        self(q, maybe_word, ls, rs)
+
+    | ['+', ..q], w:Word, ls, #reading_left ->
+        self(q, #nothing, [..ls, w], #reading_left)
+
+    | ['+', ..q], w:Word, ls, #reading_right(rs) ->
+        self(q, #nothing, ls, #reading_right([..rs, w]))
+
+    | "==" ++ q, w:Word, ls, #reading_left ->
+        self(q, #nothing, [w, ..ls], #reading_right([]))
+
+    | str, #nothing, ls, rs ->
+        chomp_while(Char.isUpper, str)
+        |> { "", _ -> ?invalid_equation
+           | w:Word, rest ->
+                self(rest, w, ls, rs)
+           }
+
+    | "", w:Word, ls, #reading_right(rs) ->
+        (.left_sum=ls, .right_sum=[w, ..rs])
+
+    | _ ->
+        ?invalid_equation
+
+    }($, #nothing, [], #reading_left)
+
+
+chomp_while
+  : (Char -> Bool), Str -> (Str, Str)
+  = { valid, [h, ..q], acc where valid(h) ->
+        self(valid, q, [..acc, h])
+
+    | _, rest, acc ->
+        (acc, rest)
+
+    }(..$, "")

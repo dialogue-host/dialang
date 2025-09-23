@@ -20,8 +20,8 @@ rev = List.revert
   Pop's the matching dominoes out of the bag.
 */
 pop_matching
-  : Nat, bag:~List(Domino) -> List(Domino)
-  = { n, _ ->
+  : Nat, ~List(Domino) -> List(Domino)
+  = { n, bag ->
         { [h, ..q], matching, others where n == h.1 ->
             self(q, [h, ..matching], others)
 
@@ -56,14 +56,15 @@ find_chain
         Equivalent to:
         ```
         pop_matching(prev.0, ~bag)
-        |([])> ?disjointed_graph
+        |%> { [] -> ?disjointed_graph }
         |> self(bag, $, acc)
         ```
         */
 
     | bag, [h, ..q], acc ->
-        self([..q, ..bag], [], [h, ..acc])
-        |(?dead_end)> self([h, ..bag], q, acc)
+        recurse = self
+        recurse([..q, ..bag], [], [h, ..acc])
+        |%> { ?dead_end -> recurse([h, ..bag], q, acc) }
 
     | [], [], solution is [h, .., l] where h.0 == l.1
     | [], [], solution is [h] where h.0 == h.1 ->

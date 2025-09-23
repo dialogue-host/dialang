@@ -614,11 +614,26 @@ always : (a, _) -> a
 |> : a, (a -> b) -> b
 <| : (a -> b), a -> b
 >> : (a -> b), (b -> c) -> (a -> c)
-<< : (b -> c), (a -> b) -> (a -> c) // unsure this is a good one to keep
-|>_ : _, a -> a
-|(?my_err)> : { ?my_err | a }, a -> a
-|(#my_tag(..struct))> : { #my_tag(..struct) | a }, (struct -> b) -> { b | a }
-|(val:MyType)> : { MyType | a }, (MyType -> b) -> { b | a }
+<< : (b -> c), (a -> b) -> (a -> c)
+// unsure these two `>>` and `<<` are good ones to keep as they are tricky to think about
+|>_ : _, a -> a // can be written `|{_}>` so might not be useful either
+|{?my_err}> : { ?my_err | a }, a -> a
+|{#my_tag(..struct)}> : { #my_tag(..struct) | a }, (struct -> b) -> { b | a }
+|{val:MyType}> : { MyType | a }, (MyType -> b) -> { b | a }
+<{val:MyType}| : ( (MyType -> a) -> b ), (MyType -> a) -> b
+// this notation avoids the use of the `<-` and and has a syntax that feels cohesive with the others
+
+// these notations could be written like so:
+|> { _ -> ... }
+|> {% ?my_err -> ... }
+|> {% #my_tag(..struct) -> ... }
+|> {% val:MyType -> ... }
+// where `{% #matching_case -> ... }` is a short hand for `{ #matching_case -> ... | anything_else -> anything_else }`
+// this is less intricate as it has less implicit rules and probably easier to grasp
+
+// an other alternative would be to have a non exhaustive pipe operator
+|%> : { a | c }, ( a -> b ) -> { b | c }
+// this introduces an even nicer behavior
 
 // type that is impossible to instantiate.
 Never : #never(Never)

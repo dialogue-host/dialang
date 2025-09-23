@@ -25,143 +25,162 @@ While knowing that :
 - The Japanese person plays chess.
 - The Norwegian lives next to the blue house.
 
+For this problem I've stretched Dialang syntax and added `if-return` and `<-` syntax.
+It would be nice to find alternative implementations that do not add that much new syntax.
+
 */
 
 House := Int.Range(0, 4) // == { 0 | 1 | 2 | 3 | 4 }
 Solution := ( .water_drinker:String, .zebra_owner:String )
+every_house = Int.range(0,4)
 
 each
   : (House -> { Solution | ?dead_end }) -> { Solution | ?dead_end }
-  = { solver, [house, ..rest] ->
-        solver(house)
-        |?dead_end self(solver, rest)
-    | _, [] ->
-        ?dead_end
-    }($, Int.range(0,4))
+  = { solver ->
+        every_house
+        |>{ [house, ..rest] ->
+              recurse = self
+              solver(house)
+              |%> { ?dead_end -> recurse(rest) }
+          | [] ->
+              ?dead_end
+          }
+    }
 
 is_not_neighbor
   = { a, b -> a /= b + 1 && a /= b - 1}
 
-solve : { Solution | ?dead_end } =
-  ( englishman <- each
+solve : Solution =
+  ( norwegian = 0 // first house
+    milk = 2 // middle house
+
+    englishman <- each
     red = englishman
+    if norwegian == englishman
+    return ?dead_end
 
     spaniard <- each
     dog = spaniard
-    if englishman == spaniard
-        return ?dead_end
+    if
+      norwegian == spaniard
+      || englishman == spaniard
+    return ?dead_end
 
     ukrainian <- each
     tea = ukrainian
-    if englishman == ukrainian
-       || spaniard == ukrainian
-        return ?dead_end
-
-    norwegian <- each
-    if englishman == norwegian
-       || spaniard == norwegian
-       || ukrainian == norwegian
-        return ?dead_end
+    if
+      norwegian == ukrainian
+      || englishman == ukrainian
+      || spaniard == ukrainian
+      || milk == tea
+    return ?dead_end
 
     japanese <- each
     chess = japanese
-    if englishman == japanese
-       || spaniard == japanese
-       || ukrainian == japanese
-       || norwegian == japanese
-        return ?dead_end
+    if
+      norwegian == japanese
+      || englishman == japanese
+      || spaniard == japanese
+      || ukrainian == japanese
+    return ?dead_end
 
     ivory <- each
-    green = ivory + 1
+    green = ivory + 1 // to the right
     coffee = green
-    if red == ivory
-       || red == green
-       || ivory == 4
-       || tea == coffee
-        return ?dead_end
+    if
+      green == 5 // out of bound
+      || red == ivory
+      || red == green
+      || milk == coffee
+      || tea == coffee
+    return ?dead_end
 
     yellow <- each
     painter = yellow
-    if red == yellow
-       || green == yellow
-       || ivory == yellow
-       || painter == chess
-        return ?dead_end
+    if
+      red == yellow
+      || green == yellow
+      || ivory == yellow
+      || painter == chess
+    return ?dead_end
 
     blue <- each
-    if red == blue
-       || green == blue
-       || ivory == blue
-       || yellow == blue
-       || is_not_neighbor(norwegian, blue)
-        return ?dead_end
+    if
+      red == blue
+      || green == blue
+      || ivory == blue
+      || yellow == blue
+      || is_not_neighbor(norwegian, blue)
+    return ?dead_end
 
     snail <- each
-    dancing == snail
-    if dog == snail
-       || chess == dancing
-       || painter == dancing
-        return ?dead_end
+    dancing = snail
+    if
+      dog == snail
+      || chess == dancing
+      || painter == dancing
+    return ?dead_end
 
     fox <- each
-    if dog == fox
-       || snail == fox
-       || is_not_neighbor(reading, fox)
-        return ?dead_end
+    if
+      dog == fox
+      || snail == fox
+    return ?dead_end
 
     horse <- each
-    if dog == horse
-       || snail == horse
-       || fox == horse
-       || is_not_neighbor(painter, horse)
-        return ?dead_end
-
-    milk <- each
-    if tea == milk
-       || coffee == milk
-        return ?dead_end
+    if
+      dog == horse
+      || snail == horse
+      || fox == horse
+      || is_not_neighbor(painter, horse)
+    return ?dead_end
 
     orange_juice <- each
     football = orange_juice
-    if tea == orange_juice
-       || coffee == orange_juice
-       || milk == orange_juice
-       || chess == football
-       || painter == football
-       || dancing == football
-        return ?dead_end
+    if
+      milk == orange_juice
+      || tea == orange_juice
+      || coffee == orange_juice
+      || chess == football
+      || painter == football
+      || dancing == football
+    return ?dead_end
 
     reading <- each
-    if chess == reading
-       || painter == reading
-       || dancing == reading
-       || football == reading
-        return ?dead_end
+    if
+      chess == reading
+      || painter == reading
+      || dancing == reading
+      || football == reading
+      || is_not_neighbor(reading, fox)
+    return ?dead_end
 
     water <- each
-    if tea == water
-       || coffee == water
-       || milk == water
-       || orange_juice == water
-        return ?dead_end
+    if
+      milk == water
+      || tea == water
+      || coffee == water
+      || orange_juice == water
+    return ?dead_end
 
     zebra <- each
-    if dog == zebra
-       || snail == zebra
-       || fox == zebra
-       || horse == zebra
-        return ?dead_end
+    if
+      dog == zebra
+      || snail == zebra
+      || fox == zebra
+      || horse == zebra
+    return ?dead_end
 
     owner
-      : .h:Home -> String
-      = { where h == englishman -> "Englishman"
-        | where h == spaniard -> "Spaniard"
-        | where h == ukrainian -> "Ukrainian"
-        | where h == norwegian -> "Norwegian"
-        | where h == japanese -> "Japanese"
+      : Home -> String
+      = { h where h == englishman -> "Englishman"
+        | h where h == spaniard -> "Spaniard"
+        | h where h == ukrainian -> "Ukrainian"
+        | h where h == norwegian -> "Norwegian"
+        | h where h == japanese -> "Japanese"
         }
 
-    ( .water_drinker = owner(.h=water)
-    , .zebra_owner = owner(.h=zebra)
+    ( .water_drinker = owner(water)
+    , .zebra_owner = owner(zebra)
     )
   )

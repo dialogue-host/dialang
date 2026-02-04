@@ -2,24 +2,37 @@
 
 Dialang is a opinionated language for the masses to write malleable and reliable software.
 
-- **No runtime error** : Type check your code statically and ensure you don't miss any edge case. (Statically type safe)
-- **No broken state** : Constrain your datatypes to guarantee that they can't hold invalid or impossible data. (Refinement/liquid types)
-- **The language is the framework** : The language makes every codebase follow the best practices making code browsable, testable and consistent. (locality of behavior, single source of truth, The Elm Architecture, ...)
-- **Fearless refactoring** : Fast and friendly compiler messages guides you through your changes. (Elm quality error messaging and compiler optimization)
-- **Run with holes** : Run incomplete programs and incrementally build your software by filling the blanks. (Hazel holes)
-- **Controllable effects** : Have full visibility and control over the side effects produced by your programs and packages. (Unison's algebraic effects)
-- **Automated multithreading** : Write single threaded code that gets parallelized at compile time. (Interaction calculus target)
-- **Code hot loading** : Safely swap pieces of code at runtime and maintain version compatibility. (Lamdera's evergreen and Elixir)
-- **First class metaprogramming** : Enforce good practices with custom static checkers and context specific codegen.
-- **Platform's abstraction** : Run your programs on every platform that can handle the proper side effects. (Roc's platform abstraction)
-- **Code internationalization** : Edit and translate your codebase and packages in different spoken languages while guaranteeing syntactic validity and consistency. (Unison's structural naming + code and documentation translation tables)
-- **The State is the Database** : Stores the state in a manner that complies with database standards. (Lamdera)
-- **Custom static checking**
-- **Programmable documentation** : markdown, math notation, run code inline, interactive, referenced values
-- **Observable** : run code remotely,
-- **Modable development environment**
+✿ **No runtime error** : Type check your code statically and ensure you don't miss any edge case. (Statically type safe)
+✿ **No broken state** : Constrain your datatypes to guarantee that they can't hold invalid or impossible data. (Refinement/liquid types)
+✿ **The language is the framework** : The language makes every codebase follow the best practices making code browsable, testable and consistent. (locality of behavior, single source of truth, The Elm Architecture, ...)
+✿ **Fearless refactoring** : Fast and friendly compiler messages guides you through your changes. (Elm quality error messaging and compiler optimization)
+✿ **Run with holes** : Run incomplete programs and incrementally build your software by filling the blanks. (Hazel holes)
+✿ **Controllable effects** : Have full visibility and control over the side effects produced by your programs and packages. (Unison's algebraic effects)
+✿ **Automated multithreading** : Write single threaded code that gets parallelized at compile time. (Interaction calculus target)
+✿ **Code hot loading** : Safely swap pieces of code at runtime and maintain version compatibility. (Lamdera's evergreen and Elixir)
+✿ **First class metaprogramming** : Enforce good practices with custom static checkers and context specific codegen.
+✿ **Platform's abstraction** : Run your programs on every platform that can handle the proper side effects. (Roc's platform abstraction)
+✿ **Code internationalization** : Edit and translate your codebase and packages in different spoken languages while guaranteeing syntactic validity and consistency. (Unison's structural naming + code and documentation translation tables)
+✿ **The State is the Database** : Stores the state in a manner that complies with database standards. (Lamdera)
+✿ **Programmable documentation** : markdown, math notation, run code inline, interactive, referenced values
+✿ **Observable** : run code remotely,
+✿ **Modable development environment**
 
 Dialang is built in order to fulfill [Dialogue's programming language requirements][1].
+
+ease of learning :
+- international
+- conseptually minimal
+- single language codebasse (no external db or escape hatch)
+- fuse code, documentation and learning resource
+- run with holes
+maintainable :
+- legible and explicit code (no magic nor implicit side effects)
+- reliably catch errors as early as possible (three layer type checking)
+- simple code is fast (automated multithreading)
+- time machine
+portable
+
 
 ## Todo
 
@@ -46,6 +59,66 @@ Dialang is built in order to fulfill [Dialogue's programming language requiremen
   - [ ] Secure Extension Hot Swapping
 
 ---
+
+# Design
+
+There are three main design goals for Dialang:
+
+✿ To be **easy to learn** by non technical people
+✿ To put **collaboration and maintainability** front and center
+✿ To **handle Dialogue's technical needs**
+
+## Easy to Learn
+
+### Code Internationalization
+
+The first barier to learning programming is the spoken language barier. Most programming languages are built around english but neglect non english speakers. Children have to first learn english before they can write their first line of code. This is a huge barier to entry.
+
+Two technical blocks are needed for this to happen:
+✿ The syntax and its keywords have to be adaptable to suit different spoken languages.
+✿ Libraries, their code and documentation have to be manually and/or automatically translatable.
+
+### Three Layered Type and Property Checking
+
+### State as Database
+
+## Collaboration and Maintainability
+
+### Function Capabilities
+
+## Handle Dialogue's Technical Needs
+
+### Structural Naming
+
+### Platform's Abstraction
+
+### Placeholder
+
+In Elm you can pipe a value into a function which becomes impossible or weird as the arguments are parenthesized. Another issue is that the piped argument is always the last one which sometimes does not work out. The placeholder solves both these issues with a fairly clean notation.
+
+
+### Mutations
+
+A common issue I find with Elm is that to update a value you have to unpack its data, operate on it, and finally repack it. The advanced pattern matching helps a lot with the unpacking part but mutations can combine unpacking and repacking into a single compact expression.
+
+```
+update_name
+  = { data ->
+        ~data.name =|> do_something
+        data
+    }
+```
+instead of
+```
+update_name
+  = { data ->
+        new_name = do_something(data.name)
+        (.name=new_name, ..data\_)
+    }
+```
+
+At the same time this notation increases dramatically the variety of ways a given library can be design even though we would prefer to go with code consistency.
+
 
 # Legacy Text
 

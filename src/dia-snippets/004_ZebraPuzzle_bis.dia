@@ -1,0 +1,149 @@
+# Zebra Puzzle
+
+This puzzle comes from the [Unison track on Exercism](https://exercism.org/tracks/unison/exercises/zebra-puzzle).
+
+We want to solve it in Dialang to see if we can stretch its design on such a difficult exercise.
+
+We need to figure out :
+- Which of the residents drinks water?
+- Who owns the zebra?
+
+While knowing that :
+- There are five houses.
+- The Englishman lives in the red house.
+- The Spaniard owns the dog.
+- The person in the green house drinks coffee.
+- The Ukrainian drinks tea.
+- The green house is immediately to the right of the ivory house.
+- The snail owner likes to go dancing.
+- The person in the yellow house is a painter.
+- The person in the middle house drinks milk.
+- The Norwegian lives in the first house.
+- The person who enjoys reading lives in the house next to the person with the fox.
+- The painter's house is next to the house with the horse.
+- The person who plays football drinks orange juice.
+- The Japanese person plays chess.
+- The Norwegian lives next to the blue house.
+
+For this problem I've stretched Dialang syntax and added `if-return` and `<-` syntax.
+It would be nice to find alternative implementations that do not add that much new syntax.
+
+*/
+
+House := Int.Range(0, 4) // == [ 0 | 1 | 2 | 3 | 4 ]
+
+
+Solution := (.water_drinker:String, .zebra_owner:String)
+
+
+Solve := [ Solution | #backtrack ]
+
+
+every_house
+  : UList(House)
+  = Int.range(0,4)
+
+
+try_this
+  : House, UList(House), {House, UList(House) -> Solve} -> Solve
+  = { house, [..h, `house`, ..q], solver ->
+        solver(house, [..h, ..q])
+
+    | .. ->
+        #backtrack
+
+    }
+
+
+try_each
+  : UList(House), {House, UList(House) -> Solve} -> Solve
+  = { bag, solver ->
+        { [house, ..rest], traversed
+          with solution = solver(house, rest + traversed)
+          where solution \= #backtrack ->
+            solution
+
+        | [house, ..ret], traversed ->
+            self(rest, [house, ..traversed])
+
+        | [], _ ->
+            #backtrack
+
+        }(bag, [])
+    }
+
+
+is_not_neighbor
+  = { a, b -> a \= b + 1 && a \= b - 1 }
+
+
+solution : Solution =
+  ( nationality_a = every_house
+    color_a = every_house
+    animal_a = every_house
+    drink_a = every_house
+    hobby_a = every_house
+
+    // first and middle house
+    try_this(0, nationality_a, $) <|| norwegian, nationality_b ->
+    try_this(2, drink_a, $) <|| milk, drink_b ->
+
+    try_each(nationality_b, $) <|| englishman, nationality_c ->
+    try_this(englishman, color_a, $) <|| red, color_b ->
+
+    try_each(nationality_c, $) <|| spaniard, nationality_d ->
+    try_this(spaniard, animal_a, $) <|| dog, animal_b ->
+
+    try_each(nationality_d, $) <|| ukrainian, nationality_e ->
+    try_this(ukrainian, drink_b, $) <|| tea, drink_c ->
+
+    [japanese] = nationality_e
+    try_this(japanese, hobby_a, $) <|| chess, hobby_b ->
+
+    try_each(color_b, $) <|| ivory, color_c ->
+    if ivory + 1 == 5 // green is out of bound
+    return #backtrack
+
+    try_this(ivory + 1, color_c, $) <|| green, color_d ->
+    try_this(green, drink_c, $) <|| coffee, drink_d ->
+
+    try_each(color_d, $) <|| yellow, color_e ->
+    try_this(yellow, hobby_b, $) <|| painter, hobby_c ->
+
+    [blue] = color_e
+    if is_not_neighbor(norwegian, blue)
+    return #backtrack
+
+    try_each(animal_b, $) <|| snail, animal_c ->
+    try_this(snail, hobby_c, $) <|| dancing, hobby_d ->
+
+    try_each(animal_c, $) <|| fox, animal_d ->
+
+    try_each(animal_d, $) <|| horse, animal_e ->
+    if is_not_neighbor(painter, horse)
+    return #backtrack
+
+    try_each(drink_d, $) <|| orange_juice, drink_e ->
+    try_this(orange_juice, hobby_d, $) <|| football, hobby_e ->
+
+    [reading] = hobby_e
+    if is_not_neighbor(reading, fox)
+    return #backtrack
+
+    [water] = drink_e
+    [zebra] = animal_e
+
+    owner
+      : Home -> String
+      = { `englishman` -> "Englishman"
+        | `spaniard` -> "Spaniard"
+        | `ukrainian` -> "Ukrainian"
+        | `norwegian` -> "Norwegian"
+        | `japanese` -> "Japanese"
+        | _ -> unreachable
+        }
+
+    ( .water_drinker = owner(water)
+    , .zebra_owner = owner(zebra)
+    )
+  )

@@ -19,21 +19,20 @@ rev = List.revert
 /*
   Pop's the matching dominoes out of the bag.
 */
-pop_matching
-  : Nat, ~List(Domino) -> List(Domino)
+match
+  : Nat, List(Domino) -> (.matching:List(Domino), .non_matching:List(Domino))
   = { n, bag ->
-        { [h, ..q], matching, others where n == h.1 ->
-            self(q, [h, ..matching], others)
+        { [h, ..q], matching, non_matching where n == h.1 ->
+            self(q, [h, ..matching], non_matching)
 
-        | [h, ..q], matching, others where n == h.0 ->
-            self(q, [rev(h), ..matching], others)
+        | [h, ..q], matching, non_matching where n == h.0 ->
+            self(q, [rev(h), ..matching], non_matching)
 
-        | [h, ..q], matching, others ->
-            self(q, matching, [h, ..others])
+        | [h, ..q], matching, non_matching ->
+            self(q, matching, [h, ..non_matching])
 
-        | [], matching, others ->
-            ~bag = others
-            matching
+        | [], matching, non_matching ->
+            (.matching, .non_matching)
 
         }(bag, [], [])
     }
@@ -42,24 +41,15 @@ pop_matching
   Return a valid circle of dominoes.
 */
 find_chain
-  : List(Domino) -> { List(Domino) | ?dead_end | ?disjointed_graph }
+  : List(Domino) -> [ List(Domino) | ?dead_end | ?disjointed_graph ]
   = { [first, ..bag], [], [] ->
         self(bag, [], [first])
 
     | bag, [], acc is [prev, ..] ->
-        possible = pop_matching(prev.0, ~bag)
-        if possible == []
+        (.matching, .non_matching) = match(prev.0, bag)
+        if matching == []
         then ?disjointed_graph
-        else self(bag, possible, acc)
-
-        /*
-        Equivalent to:
-        ```
-        pop_matching(prev.0, ~bag)
-        |%> { [] -> ?disjointed_graph }
-        |> self(bag, $, acc)
-        ```
-        */
+        else self(non_matching, matching, acc)
 
     | bag, [h, ..q], acc ->
         recurse = self

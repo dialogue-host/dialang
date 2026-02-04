@@ -30,146 +30,112 @@ It would be nice to find alternative implementations that do not add that much n
 
 */
 
-House := Int.Range(0, 4) // == { 0 | 1 | 2 | 3 | 4 }
+House := Int.Range(0, 4) // == [ 0 | 1 | 2 | 3 | 4 ]
+Solve := [ Solution | #backtrack ]
 Solution := ( .water_drinker:String, .zebra_owner:String )
 every_house = Int.range(0,4)
 
-each
-  : (House -> { Solution | ?dead_end }) -> { Solution | ?dead_end }
+for_each
+  : {House -> Solve} -> Solve
   = { solver ->
         every_house
         |>{ [house, ..rest] ->
               recurse = self
               solver(house)
-              |%> { ?dead_end -> recurse(rest) }
+              |%> { #backtrack -> recurse(rest) }
           | [] ->
-              ?dead_end
+              #backtrack
           }
     }
 
 is_not_neighbor
-  = { a, b -> a /= b + 1 && a /= b - 1}
+  = { a, b -> a \= b + 1 && a \= b - 1 }
 
 solve : Solution =
   ( norwegian = 0 // first house
     milk = 2 // middle house
 
-    englishman <- each
+    for_each <|| englishman ->
     red = englishman
     if norwegian == englishman
-    return ?dead_end
+    return #backtrack
 
-    spaniard <- each
+    for_each <|| spaniard ->
     dog = spaniard
-    if
-      norwegian == spaniard
-      || englishman == spaniard
-    return ?dead_end
+    if List.member(spaniard, [norwegian, englishman])
+    return #backtrack
 
-    ukrainian <- each
+    for_each <|| ukrainian ->
     tea = ukrainian
     if
-      norwegian == ukrainian
-      || englishman == ukrainian
-      || spaniard == ukrainian
+      List.member(ukrainian, [norwegian, englishman, spaniard])
       || milk == tea
-    return ?dead_end
+    return #backtrack
 
-    japanese <- each
+    for_each <|| japanese ->
     chess = japanese
-    if
-      norwegian == japanese
-      || englishman == japanese
-      || spaniard == japanese
-      || ukrainian == japanese
-    return ?dead_end
+    if List.member(japanese, [norwegian, englishman, spaniard, ukrainian])
+    return #backtrack
 
-    ivory <- each
+    for_each <|| ivory ->
     green = ivory + 1 // to the right
     coffee = green
     if
       green == 5 // out of bound
-      || red == ivory
-      || red == green
-      || milk == coffee
-      || tea == coffee
-    return ?dead_end
+      || List.member(red, [ivory, green])
+      || List.member(coffee, [milk, tea])
+    return #backtrack
 
-    yellow <- each
+    for_each <|| yellow ->
     painter = yellow
     if
-      red == yellow
-      || green == yellow
-      || ivory == yellow
+      List.member(yellow, [ivory, green, red])
       || painter == chess
-    return ?dead_end
+    return #backtrack
 
-    blue <- each
+    for_each <|| blue ->
     if
-      red == blue
-      || green == blue
-      || ivory == blue
-      || yellow == blue
+      List.member(blue, [ivory, green, red, yellow])
       || is_not_neighbor(norwegian, blue)
-    return ?dead_end
+    return #backtrack
 
-    snail <- each
+    for_each <|| snail ->
     dancing = snail
     if
       dog == snail
-      || chess == dancing
-      || painter == dancing
-    return ?dead_end
+      || List.member(dancing, [chess, painter])
+    return #backtrack
 
-    fox <- each
-    if
-      dog == fox
-      || snail == fox
-    return ?dead_end
+    for_each <|| fox ->
+    if List.member(fox, [dog, snail])
+    return #backtrack
 
-    horse <- each
+    for_each <|| horse ->
     if
-      dog == horse
-      || snail == horse
-      || fox == horse
+      List.member(horse, [dog, snail, fox])
       || is_not_neighbor(painter, horse)
-    return ?dead_end
+    return #backtrack
 
-    orange_juice <- each
+    for_each <|| orange_juice ->
     football = orange_juice
     if
-      milk == orange_juice
-      || tea == orange_juice
-      || coffee == orange_juice
-      || chess == football
-      || painter == football
-      || dancing == football
-    return ?dead_end
+      List.member(orange_juice, [milk, tea, coffee])
+      || List.member(football, [chess, painter, dancing])
+    return #backtrack
 
-    reading <- each
+    for_each <|| reading ->
     if
-      chess == reading
-      || painter == reading
-      || dancing == reading
-      || football == reading
+      List.member(reading, [chess, painter, dancing, football])
       || is_not_neighbor(reading, fox)
-    return ?dead_end
+    return #backtrack
 
-    water <- each
-    if
-      milk == water
-      || tea == water
-      || coffee == water
-      || orange_juice == water
-    return ?dead_end
+    for_each <|| water ->
+    if List.member(water, [milk, tea, coffee, orange_juice])
+    return #backtrack
 
-    zebra <- each
-    if
-      dog == zebra
-      || snail == zebra
-      || fox == zebra
-      || horse == zebra
-    return ?dead_end
+    for_each <|| zebra ->
+    if List.member(zebra, [dog, snail, fox, horse])
+    return #backtrack
 
     owner
       : Home -> String

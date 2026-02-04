@@ -4,5 +4,5 @@
 This is the most classic introduction to a programming language.
 
 ```
-ide.print("Hello World!")
+cap.print("Hello World!")
 ```

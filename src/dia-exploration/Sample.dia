@@ -633,7 +633,7 @@ always : (a, _) -> a
 
 // an other alternative would be to have a non exhaustive pipe operator
 |%> : { a | c }, ( a -> b ) -> { b | c }
-// this introduces an even nicer behavior
+// this introduces an even nicer behavior without introducing any fancy new syntax
 
 // type that is impossible to instantiate.
 Never : #never(Never)
@@ -1009,18 +1009,22 @@ List.map($.min, list)
 // --> guaranteed accessors
 // `$.min : (min:t, ..) -> t`
 // `$.1 : (_, t, ..) -> t`
-// `$.#coords.x : #coords(x:t, ..) -> t`
-// `$.12 : l:List(t) -> t where List.length(l) > 12`
+// `$.#coords.x : #coords(.x:t, ..) -> t`
+// `$.12 : l:List(t) -> t where List.length(l) >= 12`
 // --> unsure accessors
-// `$.[12] : List(t) -> { t | ?missing_value }`
+// `$.[12] : (.[Int]:t, ..) -> { t | ?missing_value }`
 // `$.["strKey"] : Dict(String, t) -> { t | ?missing_value }`
 // `$.[#ok] : Maybe(t) -> { t | ?missing_value }`
 // `$.[#north].km : { #north(km:t, ..) | .. } -> { t | ?missing_value }`
 // `$.[:t] : { t | .. } -> { t | ?missing_value }`
+// `$.[:(.x:t, ..)].x : {(.x:t, ..) | ..} -> { t | ?missing_value }`
+// these two might be too edge case and too confusing
+// `$.[.x] : { (.x:t, ..) | .. } -> { t | ?missing_value }`
+// `$.[.12] : { l:List(t) | .. } -> { t | ?missing_value } where List.length(l) >= 12`
 // # Builders :
 // `("hello", .[12] = "twelve", .foo = "foo")`
 
-// `namespace Example as Ex` or `namespace Json.Decode as D`
+// `namespace Example as Ex exposing (my_func)` or `namespace Json.Decode as D exposing (Decoder)`
 // `expose concat, prepend from List`
 // end of block on "\n\n"
 /*
@@ -1122,63 +1126,57 @@ Functions with variable params can't use await.
 find_index : a, List(a) -> Nat
 find_index_for
   = { isTarget, list ->
-        let
-          // let-in block
-          i = 1
-        for ~elem in list // traverse list
-        do
-          // repeated let-in block
-          ~i =|> increment
-        until isTarget(elem) // conditional end
-        then i // if ended early
-        else ?not_found // otherwise
+        i = 0
+        for elem in list do
+          if isTarget(elem) return i
+          ~i += 1
+        end
+        ?not_found
     }
 find_index_while
   = { isTarget, list ->
-        let
-          // let block
+        i = 0
+        while #true do
+          if List.is_empty(list) return ?not_found
           elem = List.pop(~list)
-          i = 0
-        while not isTarget(elem) // conditional end
-        do
-          // repeated let block
-          ~i =|> increment
-        then
-          // in block
-          if List.isEmpty(list)
-          then ?not_found
-          else i
+          if isTarget(elem) return i
+          ~i += 1
+        end
+        unreachable
     }
 find_index_rec
-  : (a -> Bool), List(a) -> { Int | ?not_found }
-  = (0, ..$)
+  : {a -> Bool}, List(a) -> [ Int | ?not_found ]
+  = (.index=0, ..$)
     >> { .., [] ->
           ?not_found
-       | index, isTarget, [ h, .. ] where isTarget(h) ->
+       | .index, isTarget, [ h, .. ] where isTarget(h) ->
           index
-       | index, isTarget, [ _, ..q ] ->
-          self(index + 1, isTarget, q)
+       | .index, isTarget, [ _, ..q ] ->
+          self(.index += 1, isTarget, q)
        }
 // some other functions
 foldl
+  : {a, b -> a}, a, List(b) -> a
   = { func, acc, list -> // write the ~ in params only when the given arg gets modified
-        for ~elem in list
-        do ~acc = func(elem, acc)
-        then acc
+        for elem in list do
+          ~acc = func(elem, acc)
+        end
+        acc
     }
 foldr
   = { func, acc, list ->
-        let ~list =|> List.revert
-        while not List.isEmpty(list)
-        do ~acc =|> func(List.pop(~list), $)
-        then acc
+        ~list =|> List.revert
+        while not(List.isEmpty(list)) do
+          ~acc =|> func(List.pop(~list), $)
+        end
+        acc
     }
 first
   = { func, list ->
-        for ~elem in list
-        until func(elem)
-        then elem // end loop early
-        else ?not_found
+        for elem in list do
+          if func(elem) return elem
+        end
+        ?not_found
     }
 // compared to the recursive implementations
 foldl_rec
@@ -1194,8 +1192,10 @@ foldr_rec
         acc
     }
 first_rec
+  : { a -> Bool }, List(a) -> [ a | ?not_found ]
   = { func, [h, ..] where func(h) -> h
     | func, [_, ..q] -> self(func, q)
+    | _, [] -> ?not_found
     }
 
 
@@ -1239,3 +1239,47 @@ traverseStruct
         self(rest, (do_something(val), ..acc))
     | (), acc -> acc
     }($, ())
+
+
+// dynamic types
+
+Dynamic := (.type:Type, .module:Maybe(Module), .val:type)
+
+dynamic_sum
+  : a:Dynamic, b:Dynamic -> c:Dynamic
+    where a.type == b.type == c.type
+    && a.module.[sum] :== {a.type, a.type -> a.type}
+  = { a, b ->
+        a.module.[sum](a.val, b.val)
+    }
+
+
+// regex pattern matching
+
+get_name
+  : String -> [ String | ?wrong_input ]
+  = { str with match = regex_match("Hey ([a-zA-Z]+)!", str) where match \= ?no_match ->
+        match.0
+    | _ ->
+        ?wrong_input
+    }
+
+Regex := s:String where is_valid_regex(s)
+Regex_Match(r:Regex) := `?`
+
+// here the first argument has to be static otherwise you couldn't evaluate the type statically
+regex_match : r:Regex, String -> Regex_Match(r) = ?
+// you can have a dynamic alternative
+regex_dynamic_match =
+  : r:Regex, String -> d:Dynamic
+    where d.type == Regex_Match(r)
+  = ?
+
+
+// static and dynamic values
+
+static = 32
+expect
+  forall({ dynamic ->
+    not(is_static(dynamic)) && is_static(static + 5)
+  })

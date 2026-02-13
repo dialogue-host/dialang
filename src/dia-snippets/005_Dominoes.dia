@@ -41,20 +41,20 @@ match
   Return a valid circle of dominoes.
 */
 find_chain
-  : List(Domino) -> [ List(Domino) | ?dead_end | ?disjointed_graph ]
+  : List(Domino) -> [ List(Domino) | #dead_end | #disjointed_graph ]
   = { [first, ..bag], [], [] ->
         self(bag, [], [first])
 
     | bag, [], acc is [prev, ..] ->
         (.matching, .non_matching) = match(prev.0, bag)
         if matching == []
-        then ?disjointed_graph
+        then #disjointed_graph
         else self(non_matching, matching, acc)
 
     | bag, [h, ..q], acc ->
         recurse = self
         recurse([..q, ..bag], [], [h, ..acc])
-        |%> { ?dead_end -> recurse([h, ..bag], q, acc) }
+        |%> { #dead_end -> recurse([h, ..bag], q, acc) }
 
     | [], [], solution is [h, .., l] where h.0 == l.1
     | [], [], solution is [h] where h.0 == h.1 ->
@@ -64,6 +64,6 @@ find_chain
         []
 
     | _ ->
-        ?dead_end
+        #dead_end
 
     }($, [], [])

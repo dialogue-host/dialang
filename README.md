@@ -2,65 +2,122 @@
 
 Dialang is a opinionated language for the masses to write malleable and reliable software.
 
+Dialang is built in order to fulfill [Dialogue's programming language requirements](https://github.com/dialogue-host/requirements/?tab=readme-ov-file#programming-language-dialang).
+
+
+## Dialang's promesses
+
 ✿ **No runtime error** : Type check your code statically and ensure you don't miss any edge case. (Statically type safe)
 ✿ **No broken state** : Constrain your datatypes to guarantee that they can't hold invalid or impossible data. (Refinement/liquid types)
 ✿ **The language is the framework** : The language makes every codebase follow the best practices making code browsable, testable and consistent. (locality of behavior, single source of truth, The Elm Architecture, ...)
 ✿ **Fearless refactoring** : Fast and friendly compiler messages guides you through your changes. (Elm quality error messaging and compiler optimization)
 ✿ **Run with holes** : Run incomplete programs and incrementally build your software by filling the blanks. (Hazel holes)
-✿ **Controllable effects** : Have full visibility and control over the side effects produced by your programs and packages. (Unison's algebraic effects)
+✿ **Controllable effects** : Have full visibility and control over the side effects produced by your programs and packages. (Unison's algebraic effects or Roc's managed effects)
 ✿ **Automated multithreading** : Write single threaded code that gets parallelized at compile time. (Interaction calculus target)
-✿ **Code hot loading** : Safely swap pieces of code at runtime and maintain version compatibility. (Lamdera's evergreen and Elixir)
+✿ **Code hot loading** : Safely swap pieces of code at runtime and maintain version compatibility. (Lamdera's evergreen, Elixir and Unison)
 ✿ **First class metaprogramming** : Enforce good practices with custom static checkers and context specific codegen.
 ✿ **Platform's abstraction** : Run your programs on every platform that can handle the proper side effects. (Roc's platform abstraction)
-✿ **Code internationalization** : Edit and translate your codebase and packages in different spoken languages while guaranteeing syntactic validity and consistency. (Unison's structural naming + code and documentation translation tables)
+✿ **Code internationalization** : Edit and translate your codebase and packages in different spoken languages while guaranteeing syntactic validity and consistency. (Unison's structural naming + translation tables for code and documentation)
 ✿ **The State is the Database** : Stores the state in a manner that complies with database standards. (Lamdera)
 ✿ **Programmable documentation** : markdown, math notation, run code inline, interactive, referenced values
-✿ **Observable** : run code remotely,
+✿ **Observable** : run code remotely, time machine
 ✿ **Modable development environment**
 
-Dialang is built in order to fulfill [Dialogue's programming language requirements][1].
-
-ease of learning :
-- international
-- conseptually minimal
-- single language codebasse (no external db or escape hatch)
-- fuse code, documentation and learning resource
-- run with holes
-maintainable :
-- legible and explicit code (no magic nor implicit side effects)
-- reliably catch errors as early as possible (three layer type checking)
-- simple code is fast (automated multithreading)
-- time machine
-portable
-
-
-## Todo
-
-- [ ] Grammar EBNF
-- [ ] Tree walk interpreter
-  - [ ] Lexer
-  - [ ] Parser
-  - [ ] Basic Types Checker
-  - [ ] Tree Walk Interpreter
-  - [ ] Refinement Types Checker (SMT integration)
-  - [ ] Nice Error Messaging
-- [ ] Self Hosted Compiler
-  - [ ] Multilingual Lexer and Parser Interface
-  - [ ] Structural Naming and Translation Tables
-  - [ ] Basic Types Checker
-  - [ ] Refinement Types Checker (SMT integration)
-  - [ ] Multilingual Pretty Printer
-  - [ ] Nice Multilingual Error Messaging
-  - [ ] Static AST Access
-  - [ ] Versioning and Collaboration
-  - [ ] Interaction Calculus Code Gen
-  - [ ] Repl
-- [ ] Interaction Calculus Target
-  - [ ] Secure Extension Hot Swapping
-
----
 
 # Design
+
+
+### Code internationalization
+
+**Why?**
+- Remove linguistic barier to programming
+
+**What?**
+- Modular parser to handle structuraly different languages (LTR languages, and more)
+- `Text` and `Greme` (standing for 'grapheme') core types handle UTF encoding by default and `Text` comes with an integrated translation library
+- Translation table with possible automated translation for namings and documentation
+
+**How?**
+- Content addressed code that gets mapped to rows of the translation table
+- Self hosted swappable parser function
+- Integration of a translation tool
+
+**See**
+- [code in Arabic](https://youtu.be/Da1a7WYEaHE?si=5v0YDZN54o-DTbY5)
+
+
+### Content addressed code
+
+**Why?**
+- Implement large scale distributed systems
+- Have versioning over a distributed codebase
+- Reference functions independently of the naming/terminology/spoken language used for internationalization purpose
+
+**What?**
+- Enable to share and reference the same code across devices
+- Split terms from implementation to
+
+**How?**
+- Referencing types and functions by their hash combined with their name unique key
+
+**See**
+- [Unison's big idea](https://www.unison-lang.org/docs/the-big-idea/)
+
+
+### Type as API Specification
+
+**Why?**
+- API specification and type serve the same purpose to describe valid input and output data, its structure but sometimes also its constraints (maximum 'String' length in a JSON)
+- for the user
+  - It provides context and guides the user
+  - It can describe functions side effects (network access, file system, etc.) which gives guarantees to the user
+- for the implementer
+  - It ensures that the incoming data is valid and won't cause bugs or security issues
+  - It describes outgoing data which can serve to check the validity of the implementation
+  - As the update function's signature defines the state, it makes impossible states impossible
+
+**What?**
+- The syntax that describes our types has to be concise enough to be read by users and written by implementers
+- It has to properly constrain the data (`String` could be a JSON, some markdown text, a piece of code, ... who knows?)
+- It has to describe side effects the function can produce
+
+**How?**
+- [Algebraic datatypes](https://en.wikipedia.org/wiki/Algebraic_data_type) which enable us to compose data : *structures* group pieces of data (`Pos := (.x:Int, .y:Int)`) and *unions* provide different alternatives (`Side := [ #left | #right ]`)
+- The `where` statement which constrains the data itself with a boolean check (`Percent := p:Float where 0 <= p <= 1`, `abs : Float -> out:Float where out >= 0`)
+- Three approaches battle here : [managed effects](https://www.roc-lang.org/functional#managed-effects), [algebraic effects](https://antelang.org/blog/why_effects/) and give the effectful functions as update function's arguments which purity can be checked in the `where` statement (`f:{ a -> b } -> out where is_pure(f)`).
+
+**See**
+- [types without borders](https://www.youtube.com/watch?v=memIRXFSNkU)
+- [communicating in types](https://www.youtube.com/watch?v=SOz66dcsuT8)
+- [json is a terrible standard](https://youtu.be/HVl1GWhyx3E?si=fuBcjy2Yc2eWJXzm)
+
+
+### Four layers static checking
+
+**Why?**
+- Accelerate feedback loop by catching issues as early as possible
+- Compiler as an assistant that guides learning, regactoring and debugging
+- The absence of runtime errors gives confidence on your own and other's code as soon as it compiles
+
+**What?**
+- Helpful error messages that explain the issue and guide/hints toward solutions and avoid overwhelming the user
+- Static type checking (type and `where` pre conditions)
+- Static property checking and testing (`expect`, `unreachable` and `where` post conditions)
+
+**How?**
+- Hilney-Milner type checker for base types
+- SMT checker for automatically proving as many properties and .refinement types as possible
+- Fuzz tester for properties and refinement types that can't be automatically proven
+- Optional manual proofs to replace fuzz testing on critical systems
+- Faster checks get run first to catch common issues faster (Hilney-Milner) and goes toward increasingly fine checks that might take more time (SMT and Fuzz). Those could get disabled temporarily while working on the code
+
+**See**
+- [Elm compiler as assistant](https://elm-lang.org/news/compilers-as-assistants)
+- [introdiction to liquid types](https://youtu.be/C5PuBeiWaSA?si=ieeGG1uWPoqTZaD2)
+- [liquidhaskell](https://liquid.kosmikus.org/)
+
+
+## Legacy
 
 There are three main design goals for Dialang:
 
@@ -84,9 +141,17 @@ Two technical blocks are needed for this to happen:
 
 ## Collaboration and Maintainability
 
-### Function Capabilities
+### Capabilities and Commands
+
+They are multiple reasons why side effects have to be controllable and explicit :
+
+- They open vulnerabilities that can be exploited by libraries
+- They make the transport of functions through network impractical
+
+Capabilities are given to functions as the reserved `.cap` argument.
 
 ## Handle Dialogue's Technical Needs
+
 
 ### Structural Naming
 
@@ -220,4 +285,44 @@ Functional languages reduce complexity by making our code behave less like distr
 
 Dialang is built around its rich syntax tree (RST). The rest of the language, from its concrete syntax to its compilation target, is modular and can be adapted to each user's needs and preferences. This is done by having interchangeable compiler pieces: Parse (converts code to its RST), Print (turns the RST back to code), Walk (traverse the RST, gather data about it, enforce rules and make automated modifications), Target (turns the RST into a compilation target like C code or ASM).
 
-[1]: https://github.com/dialogue-host/requirements/?tab=readme-ov-file#programming-language
+
+## Goals
+
+ease of learning :
+- international
+- conseptually minimal
+- single language codebasse (no external db or escape hatch)
+- fuse code, documentation and learning resource
+- run with holes
+maintainable :
+- legible and explicit code (no magic nor implicit side effects)
+- reliably catch errors as early as possible (three layer type checking)
+- simple code is fast (automated multithreading)
+- time machine
+portable
+
+
+## Todo
+
+- [ ] Document design
+- [ ] Grammar EBNF
+- [ ] Tree walk interpreter
+  - [ ] Lexer
+  - [ ] Parser
+  - [ ] Basic Types Checker
+  - [ ] Tree Walk Interpreter
+  - [ ] Refinement Types Checker (SMT integration)
+  - [ ] Nice Error Messaging
+- [ ] Self Hosted Compiler
+  - [ ] Multilingual Lexer and Parser Interface
+  - [ ] Structural Naming and Translation Tables
+  - [ ] Basic Types Checker
+  - [ ] Refinement Types Checker (SMT integration)
+  - [ ] Multilingual Pretty Printer
+  - [ ] Nice Multilingual Error Messaging
+  - [ ] Static AST Access
+  - [ ] Versioning and Collaboration
+  - [ ] Interaction Calculus Code Gen
+  - [ ] Repl
+- [ ] Interaction Calculus Target
+  - [ ] Secure Extension Hot Swapping

@@ -632,7 +632,7 @@ always : (a, _) -> a
 // this is less intricate as it has less implicit rules and probably easier to grasp
 
 // an other alternative would be to have a non exhaustive pipe operator
-|%> : { a | c }, ( a -> b ) -> { b | c }
+|%> : [ old | u ], { old -> new } -> [ new | u ]
 // this introduces an even nicer behavior without introducing any fancy new syntax
 
 // type that is impossible to instantiate.
@@ -960,16 +960,16 @@ printIf
 // using `!` when calling a function thakes the parent's `.cap` in its args
 log : String, .verbose:Bool, .cap:Print -> ()
   = printIf!(verbose, $) // == { str -> printIf(verbose, str, .cap) }
-// short running side effects (random, hash, print, encrypt, fs, ...) are run immediately (`_ -> ()` signatures)
-// while long running ones (network, ...) give are run concurrently (`_ -> Cmd(msg)` signatures)
-// any value can be wrapped into a `Cmd` in order to be run concurrently using `Cmd.callback : (_ -> msg) -> Cmd(msg)`.
+// short running side effects (random, hash, print, encrypt, fs, memoize, ...) are run immediately `.. -> a` signatures)
+// while long running ones (network, ...) are run concurrently (`_ -> Cmd(msg)` signatures)
+// any value can be wrapped into a `Cmd` in order to be run concurrently using `Cmd.callback : {.. -> msg} -> Cmd(msg)`.
 
 
 // recursive function using `self`
 sum
   : List(Int) -> Int
   = { (), acc -> acc
-    | (h, ..q), acc ->
+    | [h, ..q], acc ->
         self(q, acc + h)
     }($, 0)
 
@@ -1257,11 +1257,11 @@ dynamic_sum
 // regex pattern matching
 
 get_name
-  : String -> [ String | ?wrong_input ]
-  = { str with match = regex_match("Hey ([a-zA-Z]+)!", str) where match \= ?no_match ->
+  : String -> [ String | #wrong_input ]
+  = { str with match = regex_match("Hey ([a-zA-Z]+)!", str) where match \= #no_match ->
         match.0
     | _ ->
-        ?wrong_input
+        #wrong_input
     }
 
 Regex := s:String where is_valid_regex(s)
@@ -1283,3 +1283,28 @@ expect
   forall({ dynamic ->
     not(is_static(dynamic)) && is_static(static + 5)
   })
+
+
+// structural and terminological naming
+
+expect @fr.liens == @en.links == @de.verbindungen
+// if the language isn't specified, default to the env (here english)
+expect @fr.propriété == @property == @de.eigenshaft
+// the `@` enables us to refer to the term instead of the thing it references
+expect Term.to_string(.lang=#fr, @static) == "statique"
+
+namespace Codebase.Term as Term
+namespace Codebase.Stru as Stru
+
+termin : Term = Term.get(static)
+expect termin.en == "static" && termin.fr == "statique"
+
+s : Stru = Stru.get(static)
+
+
+Chain(..steps:List(Type)) where List.length(steps) >= 2
+  := { [a, b, ..q] -> :({a -> b}, ..Chain((b, ..q)))
+     | _ -> ()
+     }(steps)
+
+Task(out) : #_task(Chain( .., out ))

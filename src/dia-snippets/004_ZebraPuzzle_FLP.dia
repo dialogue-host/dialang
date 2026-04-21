@@ -1,0 +1,77 @@
+# Zebra Puzzle
+
+This puzzle comes from the [Unison track on Exercism](https://exercism.org/tracks/unison/exercises/zebra-puzzle).
+
+We want to solve it in Dialang to see if we can stretch its design on such a difficult exercise.
+
+We need to figure out :
+- Which of the residents drinks water?
+- Who owns the zebra?
+
+While knowing that :
+- There are five houses.
+- The Englishman lives in the red house.
+- The Spaniard owns the dog.
+- The person in the green house drinks coffee.
+- The Ukrainian drinks tea.
+- The green house is immediately to the right of the ivory house.
+- The snail owner likes to go dancing.
+- The person in the yellow house is a painter.
+- The person in the middle house drinks milk.
+- The Norwegian lives in the first house.
+- The person who enjoys reading lives in the house next to the person with the fox.
+- The painter's house is next to the house with the horse.
+- The person who plays football drinks orange juice.
+- The Japanese person plays chess.
+- The Norwegian lives next to the blue house.
+
+*/
+
+House =: [ 0 | 1 | 2 | 3 | 4 ]
+
+are_not_neighbors
+  : House, House -> Bool
+  = { a, b ->
+        a \= b + 1
+        && a \= b - 1
+    }
+
+solution : Solution =
+  ( Houses =: l:List(House) where List.length(l) == 5 && List.is_unique(l)
+
+    solve(
+      nationality : Houses = [ norwegian, englishman, spaniard, ukrainian, japanese ]
+      color : Houses = [ red, blue, yellow, green, ivory ]
+      animal : Houses = [ snail, dog, fox, horse, zebra ]
+      drink : Houses = [ milk, orange_juice, tea, coffee, water ]
+      hobby : Houses = [ chess, dancing, football, reading, painter ]
+
+      norwegian = 0
+      milk = 2
+      englishman = red
+      spaniard = dog
+      ukrainian = tea
+      japanese = chess
+      ivory + 1 = green
+      green = coffee
+      yellow = painter
+      are_not_neighbors(norwegian, blue)
+      snail = dancing
+      are_not_neighbors(painter, horse)
+      orange_juice = football
+      are_not_neighbors(reading, fox)
+    )
+
+    owner
+      : Home -> String
+      = { $englishman -> "Englishman"
+        | $spaniard -> "Spaniard"
+        | $ukrainian -> "Ukrainian"
+        | $norwegian -> "Norwegian"
+        | $japanese -> "Japanese"
+        }
+
+    ( .water_drinker = owner(water)
+    , .zebra_owner = owner(zebra)
+    )
+  )

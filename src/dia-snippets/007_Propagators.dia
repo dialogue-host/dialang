@@ -1,0 +1,48 @@
+# Propagators
+
+Here we try to see what implementing [propagators](https://groups.csail.mit.edu/mac/users/gjs/6.945/readings/art.pdf) in Dialang.
+I got introduced to propagator programming through [this conference](https://groups.csail.mit.edu/mac/users/gjs/6.945/readings/art.pdf).
+
+This is about solving complex problems under constraints.
+
+*/
+
+Assume(v) := (Id(Assumption), v)
+
+Node(a, b, c)
+  := ( .compute:
+          ( .a: (b, c) -> a
+          , .b: (c, a) -> b
+          , .c: (a, b) -> c
+          )
+     , .resolve:
+          ( .a: List(a) -> a
+          , .b: List(b) -> b
+          , .c: List(c) -> c
+          )
+     , .assumptions:
+          List(Assume([a|b|c]))
+     )
+
+PortId(v)
+  := { #a(Id(Node(v, _, _)))
+     | #b(Id(Node(_, v, _)))
+     | #c(Id(Node(_, _, v)))
+     }
+
+BiDict(node)
+  := d:Dict(node,node)
+     with l = Dict.to_list(d)
+     where List.isUnique(List.map({(a,b)->(b,a)}, l) ++ l)
+
+IdDict(v) := Dict(Id(v), v)
+
+Id(v) := #id Int
+
+Assumption := (PortId(v), v)
+
+Graph
+  := ( edges : BiDict(PortId(_))
+     , nodes : IdDict(Node(_,_,_))
+     , assume : IdDict(Assumption)
+     )

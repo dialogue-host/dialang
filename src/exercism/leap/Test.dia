@@ -1,0 +1,13 @@
+*/
+
+namespace Leap as *
+
+expect not(is_leap_year(2015))
+expect not(is_leap_year(1970))
+expect is_leap_year(1996)
+expect is_leap_year(1960)
+expect not(is_leap_year(2100))
+expect not(is_leap_year(1900))
+expect is_leap_year(2000)
+expect is_leap_year(2400)
+expect not(is_leap_year(1800))

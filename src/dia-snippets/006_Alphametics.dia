@@ -12,89 +12,89 @@ We are given a [verbal arythmetic](https://en.wikipedia.org/wiki/Verbal_arithmet
 Digit := Int.Range(0, 9)
 Letter := c:Char where Char.isUpper(c)
 Word := NeList(Letter)
-Equation := (.left_sum:NeList(Word),.right_sum:NeList(Word))
+Equation := (.leftSum:NeList(Word),.rightSum:NeList(Word))
 Solution := d:Dict(Letter, Digit) where Dict.values(d) |> List.isUnique
 
 
 solve
-  : Equation -> { Solution | ?no_solution }
-  = { (.left_sum, .right_sum) ->
+  : Equation -> [ Solution | #noSolution ]
+  = { (.leftSum, .rightSum) ->
         letters
-          = ( left_sum ++ right_sum
+          = ( leftSum ++ rightSum
               |> List.concat
               |> List.unique
             )
 
         if List.length(letters) > 10
-        return ?no_solution
+        return #noSolution
 
         digits
           = Int.range(0, 9)
 
-        for_each_mapping
-          : (Solution -> Bool) -> { Solution | ?no_solution }
+        forEachMapping
+          : (Solution -> Bool) -> { Solution | #noSolution }
           = { l=[lh, ..lq], [dh, ..dq], tried, mapping ->
                 recurse = self
                 recurse( is_solution, lq, dq ++ tried, [], [(lh, dh), ..mapping] )
-                |%> { ?not_found -> recurse( is_solution, l, dq, [dh, ..tried], mapping ) }
+                |%> { #notFound -> recurse( is_solution, l, dq, [dh, ..tried], mapping ) }
 
             | [], _, _, mapping, .is_solution ->
                 if is_solution(mapping)
                 then mapping
-                else ?not_found
+                else #notFound
 
             | [_, ..], [], _, mapping ->
                 if mapping == []
-                then ?no_solution
-                else ?not_found
+                then #noSolution
+                else #notFound
 
             }(letters, digits, [], [], .is_solution=$)
 
 
-        possible_solution <- for_each_mapping
+        forEachMapping <|| possibleSolution ->
 
-        word_to_nat
+        wordToNat
           : Word -> Nat
           = List.foldl(
-              { c, acc -> acc * 10 + Dict.get(c, possible_solution)},
+              { c, acc -> acc * 10 + Dict.get(c, possibleSolution)},
               0, $
             )
 
-        sum_words
+        sumWords
           : List(Word) -> Nat
           = List.foldl(
-              { w, acc -> acc + word_to_nat(w) },
+              { w, acc -> acc + wordToNat(w) },
               0, $
             )
 
-        sum_words(left_sum) == sum_words(right_sum)
+        sumWords(leftSum) == sumWords(rightSum)
     }
 
 
-str_to_eq
-  : Str -> { Equation | ?invalid_equation }
+strToEq
+  : Str -> [ Equation | #invalidEquation ]
   = { str ->
         equation_regex
           : Regex(Equation)
-          = ( word_regex = " *([A-Z]+) *"
-              summed_words_regex = "${word_regex}(?:\+${word_regex})*"
+          = ( wordRegex = " *([A-Z]+) *"
+              summed_words_regex = "${wordRegex}(#:\+${wordRegex})*"
               eq_regex = "/^${summed_words_regex}==${summed_words_regex}$/"
-              matching_to_eq
+              matchingToEq
                 = { (hl, ll, hr, lr) ->
-                      (.left_sum=[hl, ..ll], .right_sum=[hr, ..lr])
+                      (.leftSum=[hl, ..ll], .rightSum=[hr, ..lr])
                   }
 
               Regex.from_str(eq_regex)
-              |> Regex.map(matching_to_eq, $)
+              |> Regex.map(matchingToEq, $)
             )
 
         Regex.match(equation_regex, eq)
-        |%> { ?no_match -> ?invalid_equation }
+        |%> { #noMatch -> #invalidEquation }
     }
 
 
-str_to_eq_without_regex
-  : Str -> { Equation | ?invalid_equation }
+strToEqWithoutRegex
+  : Str -> { Equation | #invalidEquation }
   = { [' ', ..q], maybe_word, ls, rs ->
         self(q, maybe_word, ls, rs)
 
@@ -108,22 +108,22 @@ str_to_eq_without_regex
         self(q, #nothing, [w, ..ls], #reading_right([]))
 
     | str, #nothing, ls, rs ->
-        chomp_while(Char.isUpper, str)
-        |> { "", _ -> ?invalid_equation
+        chompWhile(Char.isUpper, str)
+        |> { "", _ -> #invalidEquation
            | w:Word, rest ->
                 self(rest, w, ls, rs)
            }
 
     | "", w:Word, ls, #reading_right(rs) ->
-        (.left_sum=ls, .right_sum=[w, ..rs])
+        (.leftSum=ls, .rightSum=[w, ..rs])
 
     | _ ->
-        ?invalid_equation
+        #invalidEquation
 
     }($, #nothing, [], #reading_left)
 
 
-chomp_while
+chompWhile
   : (Char -> Bool), Str -> (Str, Str)
   = { valid, [h, ..q], acc where valid(h) ->
         self(valid, q, [..acc, h])

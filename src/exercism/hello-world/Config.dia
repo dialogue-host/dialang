@@ -1,0 +1,10 @@
+# Config
+
+This file describes the packages, programs and platforms that are implemented and imported in the current repo.
+*/
+
+import
+  = ( .PF = "https://github.com/dialogue-host/core-platform/releases/download/0.5.0/X73hGh05nNTkDHU06FHC0YfFaQB1pimX7gncRcao5mU.tar.br" )
+
+build
+  = ( .Hello = #program(PF) )

@@ -25,9 +25,6 @@ While knowing that :
 - The Japanese person plays chess.
 - The Norwegian lives next to the blue house.
 
-For this problem I've stretched Dialang syntax and added `if-return` and `<-` syntax.
-It would be nice to find alternative implementations that do not add that much new syntax.
-
 */
 
 House := Int.Range(0, 4) // == [ 0 | 1 | 2 | 3 | 4 ]
@@ -46,8 +43,8 @@ every_house
 
 try_this
   : House, UList(House), {House, UList(House) -> Solve} -> Solve
-  = { house, [..h, `house`, ..q], solver ->
-        solver(house, [..h, ..q])
+  = { house, [..h, $house, ..q], solver ->
+        solver(house, h ++ q)
 
     | .. ->
         #backtrack
@@ -135,11 +132,11 @@ solution : Solution =
 
     owner
       : Home -> String
-      = { `englishman` -> "Englishman"
-        | `spaniard` -> "Spaniard"
-        | `ukrainian` -> "Ukrainian"
-        | `norwegian` -> "Norwegian"
-        | `japanese` -> "Japanese"
+      = { $englishman -> "Englishman"
+        | $spaniard -> "Spaniard"
+        | $ukrainian -> "Ukrainian"
+        | $norwegian -> "Norwegian"
+        | $japanese -> "Japanese"
         | _ -> unreachable
         }
 

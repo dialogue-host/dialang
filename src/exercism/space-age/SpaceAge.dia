@@ -1,0 +1,38 @@
+# Space Age
+*/
+
+Seconds =: #sec(Float)
+Years =: #year(Float)
+Planet =: [ #mercury | #venus | #earth | #mars | #jupiter | #saturn | #uranus | #neptune ]
+
+age
+  : Planet, Seconds -> Years
+  = { planet, sec ->
+        #year(0)
+    }
+
+
+/*
+# Solution
+
+```
+orbital_periods
+  = ( .mercury = 0.2408467
+	, .venus = 0.61519726
+	, .earth = 1.0
+	, .mars = 1.8808158
+	, .jupiter = 11.862615
+	, .saturn = 29.447498
+	, .uranus = 84.016846
+	, .neptune = 164.79132
+    )
+
+seconds_in_earth_year = 31_557_600.0
+
+age
+  : Planet, Seconds -> Years
+  = { #[planet], #sec(s) ->
+        Int.to_float(sec) / (seconds_in_earth_year * orbital_periods[planet]) // #notation
+        |> #year
+    }
+```

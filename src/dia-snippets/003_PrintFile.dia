@@ -5,36 +5,34 @@ This cli tool prints the content of the file given as first argument.
 */
 
 main
-  : .args:List(String), .cap:Cli.Cap -> Cli.ExitCode
-  = let
-      printErr
-        = { errStr ->
-              cap.print( errStr, .out = #stderr )
-              |>_ #generic_error
-          }
-    in
-    { .args=[] ->
-      cap.print( "You need to provide a file path as first argument." )
-      |> { _ -> #generic_error }
+  : .args:List(String) ! Cli.Cap -> Cli.ExitCode
+  = { .args=[] ->
+        _printErr!( "You need to provide a file path as first argument." )
 
     | .args=[filePathStr, ..] ->
-      Fs.Path.fromString(filePathStr)
-      |> cap.read( $ |> #file )
-      |>  { ?invalid_file_path ->
-              "The first argument \"${filePathStr}\" isn't a valid file path."
-              |> printErr
+        Fs.Path.fromString(filePathStr)
+        |> !read
+        |>  { #invalidFilePath ->
+                """The first argument "${filePathStr}" has to be a valid file path."""
+                |> _printErr!
 
-          | ?file_not_found ->
-              "No file found at \"${filePathStr}\"."
-              |> printErr
+            | #fileNotFound ->
+                """No file found at "${filePathStr}"."""
+                |> _printErr!
 
-          | ?access_denied ->
-              "This script doesn't have the authorization to read \"${filePathStr}\"."
-              |> printErr
+            | #accessDenied ->
+                """This script doesn't have the authorization to read "${filePathStr}"."""
+                |> _printErr!
 
-          | fileContent:String ->
-              cap.print(fileContent)
-              |>_ #success
+            | fileContent:Str ->
+                !print(fileContent)
+                #success
 
-          }
+            }
+    }
+
+_printErr
+  = { errTxt ->
+        !print(errTxt, .out=#stderr)
+        #genericError
     }

@@ -1,0 +1,22 @@
+# Leap
+*/
+
+is_leap_year
+  : Int -> Bool
+  = { year ->
+        #true
+    }
+
+
+/*
+# Solution
+
+```
+is_leap_year
+  : Int -> Bool
+  = { year ->
+        year % 4 == 0 && year % 100 /= 0
+        || year % 400
+    }
+```
+*/

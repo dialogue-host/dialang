@@ -1,0 +1,6 @@
+# Hello, World!
+*/
+
+main
+  : PF.Cmd
+  = !print("Hey, Mars!")

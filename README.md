@@ -26,21 +26,27 @@ Dialang is built in order to fulfill [Dialogue's programming language requiremen
 
 # Design
 
+[orthogonality](https://en.wikipedia.org/wiki/Orthogonality_(programming))
 
 ### Code internationalization
 
 **Why?**
 - Remove linguistic barier to programming
+- Make software internationalization as simple as possible
 
 **What?**
-- Modular parser to handle structuraly different languages (LTR languages, and more)
-- `Text` and `Greme` (standing for 'grapheme') core types handle UTF encoding by default and `Text` comes with an integrated translation library
-- Translation table with possible automated translation for namings and documentation
+- For the code
+  - Modular parser to handle structuraly different languages (LTR languages, and more)
+  - Translation table with possible automated translation for values/types names and documentation
+- For the programs and interfaces
+  - `Text` and `Char` core types correspond to unicode strings and characters respectively instead of their usual ascii representation
+  - `Text` comes with an integrated translation library that enables the program to load different translations of the text at runtime.
 
 **How?**
 - Content addressed code that gets mapped to rows of the translation table
+- `Text` literals can be found and edited in the program's translation table
 - Self hosted swappable parser function
-- Integration of a translation tool
+- Integration of an automated translation tool
 
 **See**
 - [code in Arabic](https://youtu.be/Da1a7WYEaHE?si=5v0YDZN54o-DTbY5)
@@ -113,8 +119,40 @@ Dialang is built in order to fulfill [Dialogue's programming language requiremen
 
 **See**
 - [Elm compiler as assistant](https://elm-lang.org/news/compilers-as-assistants)
-- [introdiction to liquid types](https://youtu.be/C5PuBeiWaSA?si=ieeGG1uWPoqTZaD2)
+- [introduction to liquid types](https://youtu.be/C5PuBeiWaSA?si=ieeGG1uWPoqTZaD2)
 - [liquidhaskell](https://liquid.kosmikus.org/)
+
+
+### Parse don't Validate By Default
+
+**Why?**
+-
+
+
+## Development Priorities
+
+- [ ] Document design
+- [ ] Grammar EBNF
+- [ ] Tree walk interpreter
+  - [ ] Lexer
+  - [ ] Parser
+  - [ ] Basic Types Checker
+  - [ ] Tree Walk Interpreter
+  - [ ] Refinement Types Checker (SMT integration)
+  - [ ] Nice Error Messaging
+- [ ] Self Hosted Compiler
+  - [ ] Multilingual Lexer and Parser Interface
+  - [ ] Structural Naming and Translation Tables
+  - [ ] Basic Types Checker
+  - [ ] Refinement Types Checker (SMT integration)
+  - [ ] Multilingual Pretty Printer
+  - [ ] Nice Multilingual Error Messaging
+  - [ ] Static AST Access
+  - [ ] Versioning and Collaboration
+  - [ ] Interaction Calculus Code Gen
+  - [ ] Repl
+- [ ] Interaction Calculus Target
+  - [ ] Secure Extension Hot Swapping
 
 
 ## Legacy
@@ -275,6 +313,22 @@ Languages that make use of the indentation in their grammar usually cause issues
 
 ### Packages fused with IDE Extensions
 
+### Self Healing Code
+
+The compiler can guess the best place to insert a missing token to fix a piece of code. Propose the most logical fix based on the following criterions :
+
+- minimize the amount of holes that have to be inserted for syntactic validity
+- follow type<->expression mutual constraints
+- minimize the changes in indentation of code blocks
+
+### Naming Convention
+
+Every value name is written camel case except for a set list of indicators such as `_sub` or `_rec` that denote sub or recursive functions.
+
+Values of type `Type` and `Module` are upper case and functions returning those types are upper case as well. Every other values is written lower case.
+
+These conventions get automatically enforced by the formatter.
+
 ## Legacy
 
 As dialang aims to be simple and maintainable we want to ensure data locality.
@@ -302,27 +356,49 @@ maintainable :
 portable
 
 
-## Todo
+## Inspirations
 
-- [ ] Document design
-- [ ] Grammar EBNF
-- [ ] Tree walk interpreter
-  - [ ] Lexer
-  - [ ] Parser
-  - [ ] Basic Types Checker
-  - [ ] Tree Walk Interpreter
-  - [ ] Refinement Types Checker (SMT integration)
-  - [ ] Nice Error Messaging
-- [ ] Self Hosted Compiler
-  - [ ] Multilingual Lexer and Parser Interface
-  - [ ] Structural Naming and Translation Tables
-  - [ ] Basic Types Checker
-  - [ ] Refinement Types Checker (SMT integration)
-  - [ ] Multilingual Pretty Printer
-  - [ ] Nice Multilingual Error Messaging
-  - [ ] Static AST Access
-  - [ ] Versioning and Collaboration
-  - [ ] Interaction Calculus Code Gen
-  - [ ] Repl
-- [ ] Interaction Calculus Target
-  - [ ] Secure Extension Hot Swapping
+[Elm](https://elm-lang.org/) : no runtime exception, the elm architecture and compiler as an assistant for ease of learning/maintaining
+[Make impossible states impossible](https://www.youtube.com/watch?v=IcgmSRJHu_8)
+[Remove emmotional blockers](https://www.todepond.com/report/arroost)
+[HVM](https://github.com/HigherOrderCO/HVM2/blob/main/paper/HVM2.pdf) and [Vine](https://t6.fyi/guides/inets) : interaction calculus for automated parallelization
+[Unison](https://www.unison-lang.org/docs/the-big-idea/) : functions as values for distributed systems and code translation
+Lamdera : [evergreen migrations](https://www.youtube.com/watch?v=4T6nZffnfzg) and [types as interfaces](#type-as-api-specification)
+Roc : [platform's abstraction](https://www.roc-lang.org/platforms) and packages fused with IDE extensions
+[Elm-review](https://open.spotify.com/episode/24oWn2lcXko6MCOSVGhZF4) : custom static checking
+Elm-ui : make UI with [style](www.youtube.com/watch?v=Ie-gqwSHQr0), [animations](https://www.youtube.com/watch?v=Nf4rElfA8SE) and a [design toolkit](https://www.youtube.com/watch?v=NYb2GDWMIm0)
+Hazel : run with holes and maintain syntactic validity during edits
+[Sketch-n-Sketch](https://open.spotify.com/episode/1uPKJleVYFNcOuvFB6jny6?si=509ad1131ef14b94) : visual-algebraic two-way editing (other references on this : [stop drawing dead fish](https://vimeo.com/64895205) and [inventing on principle](https://vimeo.com/906418692) by Bret Victor)
+[Dynamicland](https://dynamicland.org/2024/Intro/) : communal computer
+[Glamorous-toolkit](https://open.spotify.com/episode/1GML4WnBxjetPvos17NA5y?si=38d0a5b014294894) : modable IDE and [one rendering tree](https://dynamicland.org/2024/Intro/)
+Liquid-Haskell : refinement types
+Idris : type driven development and autocomplete
+Odin : orthogonality and AST for meta-programming
+
+
+## Code Architecture
+
+init : Flags !-> Model
+subscribe : Sub(Msg)
+
+simple :
+  update Msg, Model !-> Model
+  view : Palette, Model -> Element(Msg, .overlay=[])
+
+advanced :
+  contextualize : DumbMsg, Animation, Model  -> Msg
+  update : Msg, Model !-> Model
+  animate : Palette, Animation, Model -> Animation
+  view : Palette, Animation, Model -> Element(DumbMsg, .overlay=[])
+
+modules are just implicit arguments to a function
+palette could be given as an argument to the module
+The whole program could be built as one big tree with no file nor folders
+
+palette : Palette ->
+
+String =: core
+
+append
+  : String, String -> String
+  = {...}

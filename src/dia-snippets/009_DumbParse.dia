@@ -1,0 +1,30 @@
+This code is adapted from Roc's examples
+*/
+
+main
+  : List(Arg) ! Cmd.Cap -> [#ok | #err]
+  = { args ->
+        join
+          : List(Str) -> Str
+          = { [..h, q], acc ->
+                self(h, q ++ " " ++ acc)
+
+            | [], acc ->
+                acc
+
+            }($, "")
+
+        parseAndPrint
+          : Str !-> [#ok | #err]
+          = { name ++ " was born in " ++ birth ->
+                !print(name)
+                !print(birth)
+                #ok
+
+            | _ ->
+                #err
+
+            }
+
+        args |> join |> parseAndPrint!
+    }

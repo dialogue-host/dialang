@@ -6,5 +6,5 @@ This is our first simple cli program.
 
 main
   : .args:List(String), .cap:Cli.Cap -> Cli.ExitCode
-  = cap.print( "Hello World!" )
+  = print!( "Hello World!" )
     |>_ #success

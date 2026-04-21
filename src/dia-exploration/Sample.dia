@@ -1284,6 +1284,7 @@ expect
     not(is_static(dynamic)) && is_static(static + 5)
   })
 
+// no dynamic types!!!
 
 // structural and terminological naming
 
@@ -1302,9 +1303,218 @@ expect termin.en == "static" && termin.fr == "statique"
 s : Stru = Stru.get(static)
 
 
-Chain(..steps:List(Type)) where List.length(steps) >= 2
-  := { [a, b, ..q] -> :({a -> b}, ..Chain((b, ..q)))
+Procedure( steps:List(Type) ) where List.length(steps) >= 2
+  := { [a, b, ..q] -> ({a -> b}, ..self([b, ..q]))
      | _ -> ()
      }(steps)
 
-Task(out) : #_task(Chain( .., out ))
+Task(out) : Procedure( .., out )
+Task.map : f:{a -> b}, Procedure( ..h, a ) -> Procedure( ..h, b ) where is_pure(f)
+Task.and_then : {a -> b}, Procedure( ..h, a ) -> Procedure( ..h, a, b )
+
+Nat : [ #zero | #incr(Nat) ]
+Int : [ #pos(Nat) | #neg(Nat) ]
+List(len:Nat, a)
+  : [ #empty where len == 0
+    | #cons(a, List(len - 1, a))
+    ]
+
+// not sure about this notation, it adds implicit knowledge and makes the code more complex
+// though it avoids the need for and_then and map and makes code more concise
+partial_call
+  : {a -> b}, [ a | ..c ] -> [b | #wrong_type(c)]
+  = { f, v -> f(v % #wrong_type(v)) }
+
+// type-expr equivalence
+// A struct is the same in both types and expr
+// An union is a `#union(List(Type))`
+
+// the @ symbol to access compiler data
+expect partial_call@name.fr == "appel_partiel"
+num : Nat = 12
+expect num@type == (: Nat)
+
+// infer capabilities
+my_func : Int => () = ?todo
+// ==
+my_func : Int, .cap=_ -> () = ?todo
+
+
+/*--- ALGEBRAIC EFFECTS ---*/
+
+Type
+  =: [ StructType
+     | FuncType
+     | Alias
+     | .. // todo
+     ]
+
+Alias =: #alias(UName, .params:Params=[])
+
+FuncType =: #func( .params:StructType, .out:Type )
+
+StructType
+  =: #struct( l:List(FieldType) )
+     where noOverlappingFieldNames(l)
+
+FieldType
+  =: [ #unnamed(Type) // MyType
+     | #named(Name, Type) // .name : MyType
+     | #expand(StructType) // ..MyType
+     ]
+RecordType
+  =: [ s:StructType where hasNoUnnamedField(s)
+     | a:Alias where hasNoUnnamedField(!DigAlias(a))
+     ]
+TupleType
+  =: [ s:StructType where hasNoNamedField(s)
+     | a:Alias where hasNoNamedField(!DigAlias(a))
+     ]
+
+Handler
+  : RecordType, Type ! CompTime -> RecordType
+  = { Cap, HandledBlockOut ->
+        Cap
+        |>{ [] -> []
+          | [ (fieldName, PackedCapFunc), ..q ]
+            with #func(..capFunc) = DigAliases!(PackedCapFunc)
+          | [ (fieldName, CapFuncOut), ..q ]
+            with capFunc = ( .params=[], .Out=CapFuncOut ) ->
+              Continue
+                = if isNonEmptyRecord(capFunc.Out)
+                  then {: ..capFunc.Out.[#struct] ! Cap -> HandledBlockOut }
+                  else {: capFunc.Out ! Cap -> HandledBlockOut }
+
+              [ (fieldName, {: ..capFunc.params, Continue -> HandledBlockOut })
+              , ..self(q, HandledBlockOut)
+              ]
+          }
+    }
+
+DigAliases
+  : Type ! CompTime -> Type
+  = { #alias(name, params) ->
+        !getValue(name)
+        |> withParams($, params)
+        |> self!
+
+    | type ->
+        type
+
+    }
+
+Store(v)
+  := ( .get : v
+     , .set : v -> ()
+     )
+
+expect
+  { v, a ->: Handler!( Store(v), a ) }
+  == { v, a ->:
+        ( .get : { v ! Store(v) -> a } -> a
+        , .set : v, { () ! Store(v) -> a } -> a
+        )
+     }
+
+storeHandler
+  : v -> Handler( Store(v), a )
+  = { val ->
+        ( get =
+            { continue ->
+                handle continue(val)
+                with storeHandler(val)
+            }
+        , set =
+            { continue, newVal ->
+                handle continue()
+                with storeHandler(newVal)
+            }
+        )
+    }
+
+add
+  : Int ! Store(Int) -> ()
+  = { i ->
+        i + !get()
+        |> !set
+    }
+
+expect
+  ( use storeHandler(0) in
+      add!(3)
+      add!(7)
+      add!(12)
+      !get()
+  ) == 22
+
+// Type Definitions
+Nat =: n:Int where n >= 0
+List = { a ->: [ #empty | #cons(a, List(a)) ] }
+NEList = { a ->: [ #single(a) | #cons(a, List(a)) ] }
+Vect
+  : Nat, Type -> Type
+  = { len, a ->: l:List(a) where List.length(l) == len }
+sum
+  : Vect(n, Num), Vect(n, Num) -> Vect(n)
+  = { [ah, ..aq], [bh, ..bq] ->
+        [ah + bh, ..sum(aq, bq)]
+    | [], [] -> []
+    }
+
+/* retrurn a list of every element of the enum */
+every
+  : t:EnumType -> List(t)
+  = { #union(tagList) ->
+        List.map({ #tag(.name) -> #\name }, tagList)
+    }
+expect every(Bool) == [ #true, #false ]
+
+to_string
+  : v -> String
+  = { #\tag_name(..struct) ->
+        "#" ++ tag_name ++ to_string(struct)
+
+    | s:String ->
+        "\"" ++ s ++ "\""
+
+    | s:Struct ->
+        fields_str
+          = { (h, ..q), acc ->
+                [to_string(h)]
+                |> self(q, $ ++ acc)
+
+            | (.\h=v, ..q), acc ->
+                ["." ++ h ++ "=" ++ to_string(v)]
+                |> self(q, $ ++ acc)
+
+            | (), acc ->
+                acc
+
+            }(s, [])
+
+        content
+          = List.intersperse( ", ", fields_str )
+            |> List.concat
+
+        "( " ++ content ++ " )"
+
+    | ...
+
+    }
+
+// Can Functional Logic Programming unify Type, Pattern and Expr syntaxes into a single one?
+// It confuses inputs and outputs and makes the code quite hard to reason about
+// Though this might just come from a lack of understanding and practice
+// Also if I want to attempt this path I need to let go of most of my preconcieved ideas
+
+
+
+
+// replace tags and named fields by static strings?
+Bool =: [ "true" | "false" ]
+List = { a ->: [  () | (a, List(a)) ] }
+Result = { s, e -> [ ("ok", s) | ("err", e) ] }
+User =: ( ("name", String), ("age", Nat) )
+// they could be considered as syntactic sugar
+expect (: .name=String, .age=Nat ) == User
+// not sure I like this

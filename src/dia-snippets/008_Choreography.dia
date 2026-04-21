@@ -1,0 +1,37 @@
+# Choreographyc Programming
+
+I discovered this concept while listening to [this episode of software unscripted](https://pod.link/1602572955/episode/NjY5NWM2NTcxN2M0ZDVjN2VlMDNkMDIy).
+[Choreographyc programming](https://en.wikipedia.org/wiki/Choreographic_programming) is a very neat and powerful way of describing protocols.
+
+Here we want to see how Dialang can adapt to this kind of task. We will be able to explore the metaprogramming aspect of the language.
+
+*/
+Loc := [ #here | #there ]
+
+Choreography(stateA, stateB)
+  := ( .init : (.a : stateA, .send : _, .b : stateB)
+     , .dance : ( .a : NeList(Step(stateA, _, _))
+                , .b : NeList(Step(stateB, _, _))
+                )
+     , .timeout : (.a : Loc, ~stateA -> (), .b : Loc, ~stateB -> ())
+     )
+     with
+        lenB = List.length(dance.b)
+        lenA = List.length(dance.a)
+     where
+        ( lenB == lenA || lenB == lenA - 1 )
+        && (init.send, dance.b) :== (msg, Step(stateB, msg, _))
+        && forall({ n:Range(0, max(lenA, lenB) - 1) ->
+              (dance.b.[n], dance.a.[n]) :==
+                [ (Step(stateB, _, msg), Step(stateA, msg, _))
+                | (Step(stateB, _, Never), #nothing)
+                ]
+              && (dance.a.[n], dance.b.[n+1]) :==
+                [ (Step(stateA, _, msg), Step(stateB, msg, _))
+                | (Step(stateA, _, Never), #nothing)
+                ]
+            })
+
+
+Step(state, in, out)
+  := in, ~state -> [ #send(out) | #end ]
